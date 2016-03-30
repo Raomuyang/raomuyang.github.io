@@ -4,17 +4,33 @@
   <meta charset="utf-8">
   
   <meta http-equiv="X-UA-Compatible" content="IE=edge" >
-  <title>Raomuyang</title>
+  <title>Spring学习笔记-AOP,配置切面和声明事务 | Raomuyang</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description">
-<meta property="og:type" content="website">
-<meta property="og:title" content="Raomuyang">
-<meta property="og:url" content="http://yoursite.com/index.html">
+  <meta name="description" content="1：Aspect切面的配置（1）通过@Aspect注解定义切面，调用被定义为切点的方法时，会自动加入增强
+@Aspect//注解将PreGreetingAspect定义为一个切面
+public class PreGreetingAspect{
+   @Before(“execution(* greetTo(..))”)//@Before,@After等注解表示增强类型
+
+   public voi">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Spring学习笔记-AOP,配置切面和声明事务">
+<meta property="og:url" content="http://yoursite.com/2016/03/30/Spring学习笔记-AOP/index.html">
 <meta property="og:site_name" content="Raomuyang">
-<meta property="og:description">
+<meta property="og:description" content="1：Aspect切面的配置（1）通过@Aspect注解定义切面，调用被定义为切点的方法时，会自动加入增强
+@Aspect//注解将PreGreetingAspect定义为一个切面
+public class PreGreetingAspect{
+   @Before(“execution(* greetTo(..))”)//@Before,@After等注解表示增强类型
+
+   public voi">
+<meta property="og:updated_time" content="2016-03-30T01:48:30.892Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Raomuyang">
-<meta name="twitter:description">
+<meta name="twitter:title" content="Spring学习笔记-AOP,配置切面和声明事务">
+<meta name="twitter:description" content="1：Aspect切面的配置（1）通过@Aspect注解定义切面，调用被定义为切点的方法时，会自动加入增强
+@Aspect//注解将PreGreetingAspect定义为一个切面
+public class PreGreetingAspect{
+   @Before(“execution(* greetTo(..))”)//@Before,@After等注解表示增强类型
+
+   public voi">
   
     <link rel="alternative" href="/atom.xml" title="Raomuyang" type="application/atom+xml">
   
@@ -200,9 +216,7 @@
 	</div>
 </nav>
 
-      <div class="body-wrap">
-  
-    <article id="post-Spring学习笔记-AOP" class="article article-type-post" itemscope itemprop="blogPost">
+      <div class="body-wrap"><article id="post-Spring学习笔记-AOP" class="article article-type-post" itemscope itemprop="blogPost">
   
     <div class="article-meta">
       <a href="/2016/03/30/Spring学习笔记-AOP/" class="article-date">
@@ -218,12 +232,23 @@
       <header class="article-header">
         
   
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/03/30/Spring学习笔记-AOP/">Spring学习笔记-AOP,配置切面和声明事务</a>
+    <h1 class="article-title" itemprop="name">
+      Spring学习笔记-AOP,配置切面和声明事务
     </h1>
   
 
       </header>
+      
+      <div class="article-info article-info-post">
+        
+	<div class="article-tag tagcloud">
+		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/SpringMVC/">SpringMVC</a></li></ul>
+	</div>
+
+        
+
+        <div class="clearfix"></div>
+      </div>
       
     
     <div class="article-entry" itemprop="articleBody">
@@ -396,324 +421,68 @@ args() 在目标类方法的入参是指定类时（包含子类），切点匹�
       
     </div>
     
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/SpringMVC/">SpringMVC</a></li></ul>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2016/03/30/Spring-MVC的一些学习笔记-入门配置和HttpMessageConverter/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">Spring MVC的一些学习笔记-入门配置和HttpMessageConverter</div>
+      <strong class="article-nav-caption">></strong>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+<div class="share_jia">
+	<!-- JiaThis Button BEGIN -->
+	<div class="jiathis_style">
+		<span class="jiathis_txt">分享到: &nbsp; </span>
+		<a class="jiathis_button_facebook"></a> 
+    <a class="jiathis_button_twitter"></a>
+    <a class="jiathis_button_plus"></a> 
+    <a class="jiathis_button_tsina"></a>
+		<a class="jiathis_button_cqq"></a>
+		<a class="jiathis_button_douban"></a>
+		<a class="jiathis_button_weixin"></a>
+		<a class="jiathis_button_tumblr"></a>
+    <a href="http://www.jiathis.com/share" class="jiathis jiathis_txt jtico jtico_jiathis" target="_blank"></a>
 	</div>
-
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-    
-  </div>
-  
-</article>
+	<script type="text/javascript" src="http://v3.jiathis.com/code/jia.js?uid=1405949716054953" charset="utf-8"></script>
+	<!-- JiaThis Button END -->
+</div>
 
 
 
 
 
 
-
-
-
-  
-    <article id="post-Spring-MVC的一些学习笔记-入门配置和HttpMessageConverter" class="article article-type-post" itemscope itemprop="blogPost">
-  
-    <div class="article-meta">
-      <a href="/2016/03/30/Spring-MVC的一些学习笔记-入门配置和HttpMessageConverter/" class="article-date">
-  	<time datetime="2016-03-30T00:23:11.000Z" itemprop="datePublished">2016-03-30</time>
-</a>
-    </div>
-  
-  <div class="article-inner">
-    
-      <input type="hidden" class="isFancy" />
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/03/30/Spring-MVC的一些学习笔记-入门配置和HttpMessageConverter/">Spring MVC的一些学习笔记-入门配置和HttpMessageConverter</a>
-    </h1>
-  
-
-      </header>
-      
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="1-开始使用SpringMVC"><a href="#1-开始使用SpringMVC" class="headerlink" title="1.开始使用SpringMVC"></a>1.开始使用SpringMVC</h2><blockquote>
-<h4 id="【1】-配置web-xml以及在web-xml中配置DispatcherServlet："><a href="#【1】-配置web-xml以及在web-xml中配置DispatcherServlet：" class="headerlink" title="【1】. 配置web.xml以及在web.xml中配置DispatcherServlet："></a>【1】. 配置web.xml以及在web.xml中配置DispatcherServlet：</h4><pre><code>&lt;context-param&gt;
-        &lt;param-name&gt;contextConfigLocation&lt;/param-name&gt;
-        &lt;!—此处指定applicationContext等配置文件的位置--&gt;
-        &lt;param-value&gt;classpath:org.package.example&lt;/param-value&gt;
-&lt;/ context-param &gt;
-&lt;listener&gt;
-        &lt;listener-class&gt;
-           org.springframework.web.context.ContextLoaderListener
-        &lt;/listener-class&gt;
-&lt;/listener&gt;
-&lt;servlet&gt;
-        &lt;servlet-name&gt;此处定义一个名字&lt;/servlet-name&gt;
-        &lt;servlet-class&gt;
-            org.springframework.web.servlet.DispatcherServlet
-        &lt;/servlet-class&gt;
-        &lt;load-on-start&gt;1&lt;/load-on-start&gt;
-        &lt;!—以下这段可以不配置--&gt;
-    &lt;init-param&gt;
-        &lt;param-name&gt;
-         &lt;!—使用这个指定的话，servlet文件的名字就不是&lt;servlet-name&gt;-servlet.xml，而是servlet-name.xml--&gt;
-        &lt;/param-name&gt;
-        &lt;param-value&gt;
-                &lt;!—指定DispatcherServlet的路径--&gt;
-        &lt;/param-value&gt;
-    &lt;/init-param&gt;        
-&lt;/servlet&gt;
-&lt;servlet-mapping&gt;
-        &lt;servlet-name&gt;servlet-name&lt;servlet-name&gt;
-        &lt;url-pattern&gt;*.x(如*.html等)&lt;/url-pattern&gt;
-        &lt;!-指定处理某种后缀的http请求类型--&gt;
-&lt;/servlet-mapping&gt;
-</code></pre><p>在applicationContext等配置文件中，在最顶上要用到一下这句启动spring容器扫描类包，让注解生效<br><!-- 扫描类包，将标注Spring注解的类自动转化Bean，同时完成Bean的注入 --><br>            <context:component-scan base-package="cn.jxufe"></context:component-scan></p>
-</blockquote>
-<hr>
-<blockquote>
-<h4 id="【2】-在-servlet-xml中配置SpringMVC配置文件，定义视图名称解析器"><a href="#【2】-在-servlet-xml中配置SpringMVC配置文件，定义视图名称解析器" class="headerlink" title="【2】. 在-servlet.xml中配置SpringMVC配置文件，定义视图名称解析器"></a>【2】. 在<servlet-name>-servlet.xml中配置SpringMVC配置文件，定义视图名称解析器</servlet-name></h4><pre><code>&lt;bean 
-    class=” org.springframework.web.servlet.view.InternalResourceViewResolver”&gt;
-        p:prefix:&quot;/WEB-INF/views&quot;    &lt;!-设置前缀--&gt;
-        p:suffix:&quot;.jsp&quot;              &lt;!-设置后缀--&gt;
-/&gt;
-</code></pre><hr>
-<h4 id="【3】-编写处理请求的控制器Controller"><a href="#【3】-编写处理请求的控制器Controller" class="headerlink" title="【3】.编写处理请求的控制器Controller"></a>【3】.编写处理请求的控制器Controller</h4><ul>
-<li>使用<code>@Controller</code>将一个POJO类转换为处理请求的控制器</li>
-<li>使用<code>@RequestMapping</code>映射请求并指定某个方法处理</li>
-<li>使用<code>@PathVariable</code>将URL中的{xxx}占位符绑定到处理方法的入参中</li>
-<li>使用<code>@RequestParam</code>将参数绑定到入参中</li>
-<li>使用<code>@CookieValue</code>和<code>@RequestHeader</code>可以将Cookie和报文头属性绑定到入参中</li>
-<li>更多处理方法签名需查看资料</li>
-</ul>
-<p><strong>示例：</strong></p>
-<ul>
-<li><h5 id="Controller和-RequestMapping的简单示例"><a href="#Controller和-RequestMapping的简单示例" class="headerlink" title="@Controller和@RequestMapping的简单示例"></a>@Controller和@RequestMapping的简单示例</h5><pre><code>@Controller
-@RequestMapping(“/user”)
-public class UserController{
-</code></pre></li>
-</ul>
-</blockquote>
-<pre><code>    //----------1
-    @RequestMapping(“/register”)
-    public ModuleAndView register(){
-            ModuleAndView mav = new ModuleAndView();
-            mav.setViewName(“user/register”);
-            return mav;
-    }
-    //-------2
-    @RequestMapping(“/register”)
-    public String register(){
-                    return “user/register”;
-    }
-    //----------------3    
-    @RequestMapping(“/createUser”)
-    public ModuleAndView createUser(User user){
-            ModuleAndView mav = new ModuleAndView();
-            mav.setViewName(“user/register”);
-            mav.addObject(“user”,user);
-            return mav;
-    }
-}
-</code></pre><blockquote>
-<ul>
-<li>上面1和2两段代码是等价的，mvc可以自动将String转为mvc模型</li>
-<li>Register方法只能处理/user/register的请求</li>
-<li>代码3所示，说明mvc可以自动将表单数据按参数名和入参对象的属性绑定起来</li>
-<li>/user/**/{userId}表示处理/user/xxx/123或/user/xxx/xxx/123等请求</li>
-</ul>
-<ul>
-<li><h5 id="PathVariable将URL中的-xxx-占位符绑定到处理方法的入参中"><a href="#PathVariable将URL中的-xxx-占位符绑定到处理方法的入参中" class="headerlink" title="@PathVariable将URL中的{xxx}占位符绑定到处理方法的入参中"></a>@PathVariable将URL中的{xxx}占位符绑定到处理方法的入参中</h5><pre><code>//@RequestMapping(&quot;/equary/{userid}&quot;)
-@RequestMapping(value = &quot;/equary/{userid}&quot;,method = RequestMethod.GET)
-@ResponseBody
-public Object equary(@PathVariable(&quot;userid&quot;) String userid){
-    System.out.println(&quot;equary:&quot; + userid);
-    return &quot;success&quot;;
-}
-</code></pre></li>
-<li><h5 id="RequestMapping的使用"><a href="#RequestMapping的使用" class="headerlink" title="@RequestMapping的使用"></a>@RequestMapping的使用</h5><p>（1）. 通过请求URL进行映射：@RequestMapping(value=”/user”)—-和不写value差不多<br>（2）. 通过请求参数、方法、头进行映射</p>
-</li>
-</ul>
-</blockquote>
-<pre><code>@RequestMapping(value=”/user”,method=RequestMethod.POST,params=”userId”)
-Public String test(@RequestParam(“userId”) String userId){
-//Public String test(@RequestParam(value=“userId”,required=false)String userId){
-    //do sth
-    return “user/index”;
-}
-</code></pre><blockquote>
-<p>Required默认为true，改为false时表示请求中没有相应的参数也不会报错</p>
-</blockquote>
-<hr>
-<blockquote>
-<h2 id="2-使用HttpMessageConverter"><a href="#2-使用HttpMessageConverter" class="headerlink" title="2.使用HttpMessageConverter"></a>2.使用HttpMessageConverter<t></t></h2><p>定义HttpMessageConverter</p>
-<h6 id="1-HttpMessageConverter的介绍"><a href="#1-HttpMessageConverter的介绍" class="headerlink" title="(1).HttpMessageConverter的介绍"></a>(1).HttpMessageConverter的介绍</h6><p><strong>HttpMessageConverter</strong> 负责将请求信息转换为一个对象。<br>    在Spring中默认的<code>AnnotationMethodHandlerAdapter</code>默认装配了以下的HttpMessageConverter：</p>
-<ul>
-<li>StringHttpMessageConverter</li>
-<li>ByteArrayHttpMessageConverter，</li>
-<li>SourceHttpMessageConverter</li>
-<li>XmlAwareFromHttpMessageConverter</li>
-</ul>
-<p>如果还需装配其它的HttpMessageConverter，则需要在<servlet-name>-servlet.xml这个web容器中显式地定义</servlet-name></p>
-<p><strong>示例：</strong></p>
-<pre><code>&lt;!—定义一个AnnotationMethodHandlerAdapter --&gt;
-&lt;bean 
-    class=”org.springframework.web.servlet.mvc.annotation.AnnotationMethodHandlerAdapter”
-    p:messageConverters-ref=”messageConverters”/&gt;
-&lt;!—定义HttpMessageConverter列表 --&gt;
-&lt;util:list id=” messageConverters”&gt;
-    &lt;bean
-     class=”org.springframework.http.converter.BufferedImageHttpMessageConverter”/&gt;
-    &lt;bean
-     class=”org.springframework.http.converter.BufferedImageHttpMessageConverter”/&gt;
-     ...
-        &lt;!-…更多都可以在这里定义--&gt;
-&lt;/util:list&gt;
-</code></pre></blockquote>
-<p>在容器中显示定义的AnnotationMethodHandlerAdapter会覆盖掉默认的，，所以默认的四个HttpMessageConverter还需重新装配</p>
-<blockquote>
-<h6 id="（2）使用HttpMessageConverter"><a href="#（2）使用HttpMessageConverter" class="headerlink" title="（2）使用HttpMessageConverter"></a>（2）使用HttpMessageConverter</h6><ul>
-<li>使用@RequestBody和@ResponseBody进行标注</li>
-<li>使用HttpEntity<t>/ResponseEntity<t>作为处理方法的入参和返回值</t></t></li>
-</ul>
-<p><strong>示例：</strong></p>
-<h6 id="【1】-RequestBody和-ResponseBody的使用"><a href="#【1】-RequestBody和-ResponseBody的使用" class="headerlink" title="【1】@RequestBody和@ResponseBody的使用"></a>【1】@RequestBody和@ResponseBody的使用</h6><pre><code>@RequestMapping(“handle1”)
-Public String handle1(@RequestBody String requestBody){
-    System.out.println(requestBody);
-    Return “success”;
-}
-</code></pre><p>handle1通过@RequestBody自动将请求的报文转换为字符串绑定到requestBody入参中</p>
-<pre><code>@ResponseBody
-@RequestMapping(value=”/handle2/{imageId}”)
-public byte[] handle2(@PathVariable(“imageId”) String imageId) throws IOException{
-    System.out.println(“Load image of ”+imageId);
-    Resource res=new ClassPathResource(“/image”+imageId+”.jpg”);
-    byte[] fileData=FileCopyUtils.copyToByteArray(res.getInputStream());
-    return fileData;
-}
-</code></pre><p>handle2在方法体中读取一张图片，并将图片作为输出流返回，而@ResponseBody的标识即可将该返回值输出到相应流中，客户端将显示这张图片。<br><strong>内部流程：</strong>在handle1方法中，MVC根据@RequestBody的标注查找到相应的HttpMessageConverter，将请求信息转换绑定到requestBody入参上。handle2方法最顶上拥有一个@ResponseBody的注解，返回值为byte[]，spring mvc会根据返回值类型匹配ByteArrayHttpMessageConverter对返回值进行处理，由此将图片数据流输出到客户端</p>
-<h6 id="【2】HttpEntity和ResponseEntity"><a href="#【2】HttpEntity和ResponseEntity" class="headerlink" title="【2】HttpEntity和ResponseEntity"></a>【2】<code>HttpEntity</code>和<code>ResponseEntity</code></h6><p>和<code>@RequestBody</code>/<code>@ResponseBody</code>类似，<strong>HttpEntity&lt;?&gt;</strong>不但可以访问请求及响应报文体的数据，还可以访问请求和响应报文头的数据。Spring mvc根据&lt;?&gt;泛型类型查找对应的HttpMessageConverter.</p>
-<pre><code>@RequestMapping(“/handle”)
-Public String handle(HttpEntity&lt;String&gt; httpentity){
-    long contentLen = httpEntity.getHeaders().getContentLength();
-    System.out.println(httpEntity.getBody());
-}
-</code></pre><p>以上，SpringMVC会使用StringHttpMessageConverter将请求报文体及报文头的信息绑定到httpEntity中，在方法体内可以对相应的信息进行访问</p>
-<pre><code>@RequestMapping(value=”/handle/{imageId}”)
-public ResopnseEntity&lt;byte[]&gt; handle(@PathVariable(“imageId”) String imageId)
-throws Throwable{
-                Resource res = new ClassPathResource(“/image”+imageId+”.jpg”);
-byte[] fileData=FileCopyUtil.copyToByteArray(res.getInputStream());
-ResponseEntity&lt;byte[]&gt; responseEntity=
-new ResponseEntity&lt;byte[]&gt;(fileDate,HttpStatus.OK);
-return responseEntity;
-}
-</code></pre><p>返回值设置为ResponseEntity的泛型，泛型类型为byte[]，将输出流放入到ResponseEntity中，SpringMVC会自动匹配相应的HttpMessageConverter。效果和@ResponseBody一样。</p>
-</blockquote>
-
-      
-    </div>
-    
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Spring-MVC/">Spring MVC</a></li></ul>
-	</div>
-
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-    
-  </div>
-  
-</article>
+<div class="duoshuo">
+	<!-- 多说评论框 start -->
+	<div class="ds-thread" data-thread-key="Spring学习笔记-AOP" data-title="Spring学习笔记-AOP,配置切面和声明事务" data-url="http://yoursite.com/2016/03/30/Spring学习笔记-AOP/"></div>
+	<!-- 多说评论框 end -->
+	<!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+	<script type="text/javascript">
+	var duoshuoQuery = {short_name:"true"};
+	(function() {
+		var ds = document.createElement('script');
+		ds.type = 'text/javascript';ds.async = true;
+		ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+		ds.charset = 'UTF-8';
+		(document.getElementsByTagName('head')[0] 
+		 || document.getElementsByTagName('body')[0]).appendChild(ds);
+	})();
+	</script>
+	<!-- 多说公共JS代码 end -->
+</div>
 
 
 
 
-
-
-
-
-
-  
-    <article id="post-hello-world" class="article article-type-post" itemscope itemprop="blogPost">
-  
-    <div class="article-meta">
-      <a href="/2016/03/29/hello-world/" class="article-date">
-  	<time datetime="2016-03-29T15:01:08.841Z" itemprop="datePublished">2016-03-29</time>
-</a>
-    </div>
-  
-  <div class="article-inner">
-    
-      <input type="hidden" class="isFancy" />
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/03/29/hello-world/">Hello World</a>
-    </h1>
-  
-
-      </header>
-      
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>Welcome to <a href="https://hexo.io/" target="_blank" rel="external">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/" target="_blank" rel="external">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html" target="_blank" rel="external">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues" target="_blank" rel="external">GitHub</a>.</p>
-<h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo new <span class="string">"My New Post"</span></span><br></pre></td></tr></table></figure>
-<p>More info: <a href="https://hexo.io/docs/writing.html" target="_blank" rel="external">Writing</a></p>
-<h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure>
-<p>More info: <a href="https://hexo.io/docs/server.html" target="_blank" rel="external">Server</a></p>
-<h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo generate</span><br></pre></td></tr></table></figure>
-<p>More info: <a href="https://hexo.io/docs/generating.html" target="_blank" rel="external">Generating</a></p>
-<h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure>
-<p>More info: <a href="https://hexo.io/docs/deployment.html" target="_blank" rel="external">Deployment</a></p>
-
-      
-    </div>
-    
-    <div class="article-info article-info-index">
-      
-      
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-    
-  </div>
-  
-</article>
-
-
-
-
-
-
-
-
-
-  
-  
 </div>
       <footer id="footer">
   <div class="outer">
@@ -737,8 +506,8 @@ return responseEntity;
 		fancybox: true,
 		mathjax: true,
 		animate: true,
-		isHome: true,
-		isPost: false,
+		isHome: false,
+		isPost: true,
 		isArchive: false,
 		isTag: false,
 		isCategory: false,
