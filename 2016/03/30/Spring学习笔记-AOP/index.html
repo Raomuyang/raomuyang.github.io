@@ -6,31 +6,19 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" >
   <title>Spring学习笔记-AOP,配置切面和声明事务 | Raomuyang</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="1：Aspect切面的配置（1）通过@Aspect注解定义切面，调用被定义为切点的方法时，会自动加入增强
-@Aspect//注解将PreGreetingAspect定义为一个切面
-public class PreGreetingAspect{
-   @Before(“execution(* greetTo(..))”)//@Before,@After等注解表示增强类型
-
-   public voi">
+  <meta name="description" content="1：Aspect切面的配置
+（1）通过@Aspect注解定义切面，调用被定义为切点的方法时，会自动加入增强1234567891011@Aspect//注解将PreGreetingAspect定义为一个切面public class PreGreetingAspect&amp;#123;            @Before(&quot;execution(* greetTo(..))&quot;)//@Before,@Afte">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Spring学习笔记-AOP,配置切面和声明事务">
 <meta property="og:url" content="http://yoursite.com/2016/03/30/Spring学习笔记-AOP/index.html">
 <meta property="og:site_name" content="Raomuyang">
-<meta property="og:description" content="1：Aspect切面的配置（1）通过@Aspect注解定义切面，调用被定义为切点的方法时，会自动加入增强
-@Aspect//注解将PreGreetingAspect定义为一个切面
-public class PreGreetingAspect{
-   @Before(“execution(* greetTo(..))”)//@Before,@After等注解表示增强类型
-
-   public voi">
-<meta property="og:updated_time" content="2016-03-31T03:28:07.940Z">
+<meta property="og:description" content="1：Aspect切面的配置
+（1）通过@Aspect注解定义切面，调用被定义为切点的方法时，会自动加入增强1234567891011@Aspect//注解将PreGreetingAspect定义为一个切面public class PreGreetingAspect&amp;#123;            @Before(&quot;execution(* greetTo(..))&quot;)//@Before,@Afte">
+<meta property="og:updated_time" content="2016-04-02T13:45:50.867Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Spring学习笔记-AOP,配置切面和声明事务">
-<meta name="twitter:description" content="1：Aspect切面的配置（1）通过@Aspect注解定义切面，调用被定义为切点的方法时，会自动加入增强
-@Aspect//注解将PreGreetingAspect定义为一个切面
-public class PreGreetingAspect{
-   @Before(“execution(* greetTo(..))”)//@Before,@After等注解表示增强类型
-
-   public voi">
+<meta name="twitter:description" content="1：Aspect切面的配置
+（1）通过@Aspect注解定义切面，调用被定义为切点的方法时，会自动加入增强1234567891011@Aspect//注解将PreGreetingAspect定义为一个切面public class PreGreetingAspect&amp;#123;            @Before(&quot;execution(* greetTo(..))&quot;)//@Before,@Afte">
   
     <link rel="alternative" href="/atom.xml" title="Raomuyang" type="application/atom+xml">
   
@@ -132,7 +120,7 @@ public class PreGreetingAspect{
 				
 				<section class="switch-part switch-part2">
 					<div class="widget tagcloud" id="js-tagcloud">
-						<a href="/tags/Spring-MVC/" style="font-size: 10px;">Spring MVC</a> <a href="/tags/SpringMVC/" style="font-size: 10px;">SpringMVC</a>
+						<a href="/tags/AOP/" style="font-size: 10px;">AOP</a> <a href="/tags/Advisor/" style="font-size: 10px;">Advisor</a> <a href="/tags/Aspect/" style="font-size: 10px;">Aspect</a> <a href="/tags/Spring-MVC/" style="font-size: 20px;">Spring MVC</a>
 					</div>
 				</section>
 				
@@ -234,7 +222,7 @@ public class PreGreetingAspect{
       <div class="article-info article-info-post">
         
 	<div class="article-tag tagcloud">
-		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/SpringMVC/">SpringMVC</a></li></ul>
+		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/AOP/">AOP</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Advisor/">Advisor</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Aspect/">Aspect</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Spring-MVC/">Spring MVC</a></li></ul>
 	</div>
 
         
@@ -245,172 +233,122 @@ public class PreGreetingAspect{
     
     <div class="article-entry" itemprop="articleBody">
       
-        <p>1：Aspect切面的配置<br>（1）通过@Aspect注解定义切面，调用被定义为切点的方法时，会自动加入增强</p>
-<p>@Aspect//注解将PreGreetingAspect定义为一个切面</p>
-<p>public class PreGreetingAspect{</p>
-<pre><code>   @Before(“execution(* greetTo(..))”)//@Before,@After等注解表示增强类型
-
-   public void beforeGreeting(){
-
-System.out.println(“-----before advice-----”);
-</code></pre><p>}</p>
-<p>}</p>
- <a id="more"></a>   
-<p>@Before中的”execution(<em> greetTo(..))”为切点表达式函数，目的是匹配切入点，</em> greetTo(..)是通过正则表达式匹配目标类的greetTo()方法</p>
-<p>【1】增强类型有如下几种</p>
-<pre><code>@Before: 前置增强（value , argNames）
-
-@AfterReturning: 后置增强（value, pointcut,returning, argNames）
-
-@Around: 环绕增强（value,argNames）
-
-@AfterThrowing: 抛出增强（value,pointcut,throwing,argNames）
-
-@After: Final增强(value,argNames)
-
-@DeclareParents: 引介增强(value,defaultImpl)
-</code></pre><p>【2】切入点函数</p>
-<pre><code>execution() 最常用的切点函数
-
-         通过方法签名定义切点execution(public * *(..)) 
-
-                                                        execution(* *To(..))
-</code></pre><p>通过类定义切点                                 execution(<em> com.package.Waiter.</em>(..))匹配Waiter接口中的所有方法</p>
-<p>通过类包定义切点  .<em>：包下所有类；..</em>：包、子包下所有类</p>
-<ul>
-<li>com..<em>.</em>Dao.find*(..)</li>
+        <h3 id="1：Aspect切面的配置"><a href="#1：Aspect切面的配置" class="headerlink" title="1：Aspect切面的配置"></a>1：Aspect切面的配置</h3><blockquote>
+<h4 id="（1）通过-Aspect注解定义切面，调用被定义为切点的方法时，会自动加入增强"><a href="#（1）通过-Aspect注解定义切面，调用被定义为切点的方法时，会自动加入增强" class="headerlink" title="（1）通过@Aspect注解定义切面，调用被定义为切点的方法时，会自动加入增强"></a>（1）通过@Aspect注解定义切面，调用被定义为切点的方法时，会自动加入增强</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Aspect</span><span class="comment">//注解将PreGreetingAspect定义为一个切面</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">PreGreetingAspect</span></span>&#123;</span><br><span class="line"></span><br><span class="line">            <span class="meta">@Before</span>(<span class="string">"execution(* greetTo(..))"</span>)<span class="comment">//@Before,@After等注解表示增强类型</span></span><br><span class="line"></span><br><span class="line">            <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">beforeGreeting</span><span class="params">()</span></span>&#123;</span><br><span class="line"></span><br><span class="line">         System.out.println(<span class="string">"-----before advice-----"</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</blockquote>
+<a id="more"></a>   
+<p><em>`@Before中的”execution(</em> greetTo(..))”为切点表达式函数，目的是匹配切入点，<em> greetTo(..)是通过正则表达式匹配目标类的greetTo()方法`</em></p>
+<blockquote>
+<h6 id="【1】增强类型有如下几种"><a href="#【1】增强类型有如下几种" class="headerlink" title="【1】增强类型有如下几种"></a>【1】增强类型有如下几种</h6><ul>
+<li>@Before: 前置增强（value , argNames）</li>
+<li>@AfterReturning: 后置增强（value, pointcut,returning, argNames）</li>
+<li>@Around: 环绕增强（value,argNames）</li>
+<li>@AfterThrowing: 抛出增强（value,pointcut,throwing,argNames）</li>
+<li>@After: Final增强(value,argNames)</li>
+<li>@DeclareParents: 引介增强(value,defaultImpl)</li>
 </ul>
-<p>匹配所有前缀为com的包和子包下的后缀为Dao的类（接口）的所有前缀为find的方法</p>
-<pre><code>          通过方法的入参定义切点  execution(*joke(int,String,*))
+<h6 id="【2】切入点函数"><a href="#【2】切入点函数" class="headerlink" title="【2】切入点函数"></a>【2】切入点函数</h6><ul>
+<li>execution() 最常用的切点函数<ul>
+<li>通过方法签名定义切点：<ul>
+<li><code>execution(public * *(..))</code>  匹配方法签名为public的切点</li>
+<li><code>execution(* *To(..))</code> 匹配方法名中带To的方法为切点</li>
+</ul>
+</li>
+<li>通过类定义切点<ul>
+<li><code>execution(* com.package.Waiter.*(..))</code>匹配Waiter接口中的所有方法</li>
+</ul>
+</li>
+<li>通过类包定义切点  <ul>
+<li><code>.*</code>：匹配包下所有类</li>
+<li>..*：匹配包、子包下所有类</li>
+<li><code>* com..*.*Dao.find*(..)</code> 匹配所有前缀为com的包和子包下的后缀为Dao的类（接口）的所有前缀为find的方法</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</blockquote>
+<pre><code>+ 通过方法的入参定义切点  
+   + execution(*joke(int,String,*))
+   + execution(*joke(int,…))
+</code></pre><ul>
+<li>args() 在目标类方法的入参是指定的类时（包含子类），匹配切点<ul>
+<li>args(com.test.Waiter)</li>
+</ul>
+</li>
+</ul>
+<p><em>` args和execution(</em> <em>(com.test.Waiter))的区别在于，execution是针对方法签名而言的，只匹配入参为(Waiter waiter)的，args还匹配(NaiveWaiter naiveWaiter)`</em></p>
+<ul>
+<li>target() 按目标类类型匹配<ul>
+<li>target(M)表示若目标类匹配M，则目标类所有方法都匹配切点</li>
+</ul>
+</li>
+<li>within() 通过类匹配模式串声明切点，不能做方法级的匹配<ul>
+<li>within(com.test.*)匹配test包下所有类</li>
+<li>within(com.test..*)匹配test包和子包下所有类</li>
+</ul>
+</li>
+</ul>
+<p><em><code>**@within()**,** @target()**, **@annotation()**,** args()** 都是只接受注解类名作为入参</code></em></p>
+<h6 id="【3】切点复合运算：可以通过运算符，通过多个切点函数匹配切点"><a href="#【3】切点复合运算：可以通过运算符，通过多个切点函数匹配切点" class="headerlink" title="【3】切点复合运算：可以通过运算符，通过多个切点函数匹配切点"></a>【3】切点复合运算：可以通过运算符，通过多个切点函数匹配切点</h6><p> <strong>示例：</strong><br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">      <span class="meta">@After</span>(<span class="string">"wintin(com.test.*) &amp;&amp; execution(* greetTo(..))"</span>)</span><br><span class="line"><span class="meta">@Before</span>(<span class="string">"!target(com.test.Waiter) &amp;&amp; execution("</span>* serveTo(..)<span class="string">")"</span>)</span><br><span class="line"><span class="meta">@AfterReturning</span>(<span class="string">"target(com.test1..*) || target(com.test2..*)"</span>)</span><br></pre></td></tr></table></figure></p>
+<blockquote>
+<h4 id="（2）基于Schema配置切面"><a href="#（2）基于Schema配置切面" class="headerlink" title="（2）基于Schema配置切面"></a>（2）基于Schema配置切面</h4></blockquote>
+<ul>
+<li>首先定义增强方法的bean</li>
+<li>然后配置<aop:config>:<ul>
+<li>Config中有<aop:pointcut>,<aop:aspect>，如果pointcut直接在config中直接定义，则须满足前面的顺序。</aop:aspect></aop:pointcut></li>
+<li>可以定义多个<code>&lt;aop:config&gt;</code>, <code>&lt;aop:config&gt;</code>中还可以直接定义<code>&lt;aop:advisor&gt;</code></li>
+<li><code>&lt;aop:aspect&gt;</code> 须配置的信息有<em>ref=</em>（引用增强方法bean），<em>method=</em>（增强方法）,<em>pointcut/pointcut-ref=</em></li>
+<li>&lt;<code>aop:pointcut&gt;</code>中须配置的有 <em>id=,expression=</em>（定义切点）<blockquote>
+<p>【1】简单的示例</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">&lt;bean id="adviceMethods" class="com.test.AdviceMethods"/&gt;</span><br><span class="line">     &lt;aop:config proxy-target-class="true"&gt;</span><br><span class="line">	     &lt;aop:aspect ref="adviceMethods"&gt;</span><br><span class="line">		 	&lt;aop:before pointcut="target(com.test.Waiter) and execution(* greetTo(..))" method="preGreeting"/&gt;</span><br><span class="line">		 &lt;/aop:aspect&gt;    </span><br><span class="line">     &lt;/aop:config&gt;   </span><br><span class="line">&lt;/bean&gt;</span><br></pre></td></tr></table></figure>
+</blockquote>
+</li>
+</ul>
+</aop:config></li>
+</ul>
+<p><em><code>这里的切入点为一个匿名切入点，只能在这个aop:aspect里面使用proxy-target-class=&quot;true&quot;表示使用CGLib动态代理</code></em></p>
+<blockquote>
+<p>【2】配置命名的切入点<br><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">aop:config</span> <span class="attr">proxy-target-class</span>=<span class="string">"true"</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">aop:aspect</span> <span class="attr">ref</span>=<span class="string">"adviceMethods"</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">aop:</span> <span class="attr">pointcut</span> <span class="attr">id</span>=<span class="string">"greetToPointcut"</span><span class="string">expression="target(com.test.Waiter)</span> <span class="attr">and</span> <span class="attr">execution</span>(* <span class="attr">greetTo</span>(<span class="attr">..</span>))" /&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">aop:before</span> <span class="attr">pointcut-ref</span>=<span class="string">"greetToPointcut"</span> <span class="attr">method</span>=<span class="string">"preGreeting"</span>/&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">aop:aspect</span>&gt;</span>    </span><br><span class="line"><span class="tag">&lt;/<span class="name">aop:config</span>&gt;</span></span><br></pre></td></tr></table></figure></p>
+<p>aop:config中可以定义多个aop:aspect，所以配置命名pointcut就可以被不同的增强切面所访问（pointcut在aspect外面）<br><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">aop:config</span> <span class="attr">proxy-target-class</span>=<span class="string">"true"</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">aop:</span> <span class="attr">pointcut</span> <span class="attr">id</span>=<span class="string">"greetToPointcut"</span> <span class="attr">expression</span>=<span class="string">"target(com.test.Waiter) and execution(* greetTo(..))"</span> /&gt;</span></span><br><span class="line">	<span class="comment">&lt;!--第一个切面--&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">aop:aspect</span> <span class="attr">ref</span>=<span class="string">"adviceMethods"</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">aop:before</span> <span class="attr">pointcut-ref</span>=<span class="string">"greetToPointcut"</span> <span class="attr">method</span>=<span class="string">"preGreeting"</span>/&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">aop:aspect</span>&gt;</span>    </span><br><span class="line">	<span class="comment">&lt;!--第二个切面--&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">aop:aspect</span> <span class="attr">ref</span>=<span class="string">"adviceMethods"</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">aop:before</span> <span class="attr">pointcut-ref</span>=<span class="string">"greetToPointcut"</span> <span class="attr">method</span>=<span class="string">"postGreeting"</span>/&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">aop:aspect</span>&gt;</span>    </span><br><span class="line"><span class="tag">&lt;/<span class="name">aop:config</span>&gt;</span></span><br></pre></td></tr></table></figure></p>
+<p>【3】配置Advisor，advisor是切面和增强的复合体<br><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">aop:config</span> <span class="attr">proxy-target-class</span>=<span class="string">"true"</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">aop:</span> <span class="attr">pointcut</span> <span class="attr">id</span>=<span class="string">"greetToPointcut"</span> <span class="attr">expression</span>=<span class="string">"target(com.test.Waiter) and execution(* greetTo(..))"</span> /&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">aop:advisor</span> <span class="attr">advice-ref:</span>"<span class="attr">testAdvice</span>" <span class="attr">pointcut-ref</span>=<span class="string">"greetToPointcut"</span>/&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">aop:config</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">bean</span> <span class="attr">id</span>=<span class="string">"testAdvice"</span> <span class="attr">class</span>=<span class="string">"com.test.TestBeforeAdvice"</span>&gt;</span></span><br></pre></td></tr></table></figure></p>
+</blockquote>
+<p><em>【Advisor中的advice所依赖的类TestBeforeAdvice必须是实现了MethodBeforeAdvice等接口的advisor类】</em><br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">TestBeforeAdvice</span> <span class="keyword">implements</span> <span class="title">MethodBeforeAdvice</span></span>&#123;</span><br><span class="line">         <span class="function"><span class="keyword">public</span> class <span class="title">before</span><span class="params">(Method method,Object[] args, Object target)</span><span class="keyword">throws</span> Throwable</span>&#123;</span><br><span class="line">                   System.out.println(<span class="string">"------Test Before Advice"</span>);</span><br><span class="line">         &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<h3 id="2-事务通知的声明"><a href="#2-事务通知的声明" class="headerlink" title="2.  事务通知的声明"></a>2.  事务通知的声明</h3><blockquote>
+<h4 id="（1）在xml中配置声明事务"><a href="#（1）在xml中配置声明事务" class="headerlink" title="（1）在xml中配置声明事务"></a>（1）在xml中配置声明事务</h4></blockquote>
+<ul>
+<li>通过tx Schema中定义的<tx:advice>声明事务通知。使用前须先将schema定义添加到<beans>根元素中去</beans></tx:advice></li>
+<li>声明事务通知后，通过aop织入，在<aop:config>元素中声明一个advisor，将事务与切入点关联起来。</aop:config></li>
+<li>配置dataSource -&gt; 声明事务管理器，包裹数据源 –&gt;</li>
+<li>声明事务通知，transaction-manager参数引用事务管理器 -&gt;</li>
+<li>配置<aop:config>，定义切入点<aop:pointcut>在<aop:advisor>设置属性pointcut-ref和advice-ref，advice-ref为刚刚声明的事务通知 -&gt;</aop:advisor></aop:pointcut></aop:config></li>
+<li>事务的配置完成</li>
+</ul>
+<p><em>a.声明事务管理器，将dataSource包裹</em><br><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">bean</span></span><br><span class="line">	<span class="attr">id</span>=<span class="string">"transactionManager"</span><span class="string">class="org.springframework.jdbc.datasource.DataSourceTransactionManager"</span></span><br><span class="line">	<span class="attr">p:dataSource-ref</span>=<span class="string">"dataSource"</span>/&gt;</span></span><br></pre></td></tr></table></figure></p>
+<p><em>b.声明事务通知,引用事务管理器</em><br><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">tx:advice</span> <span class="attr">id</span>=<span class="string">"txAdvice"</span> <span class="attr">transaction-manager</span>=<span class="string">"transactionManager"</span>&gt;</span></span><br><span class="line">         <span class="tag">&lt;<span class="name">tx:attributes</span>&gt;</span></span><br><span class="line">                   <span class="tag">&lt;<span class="name">tx:method</span> <span class="attr">name</span>=<span class="string">"*"</span>/&gt;</span></span><br><span class="line">         <span class="tag">&lt;/<span class="name">tx:attributes</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">tx:advice</span>&gt;</span></span><br></pre></td></tr></table></figure></p>
+<p><em>c.声明事务通知需要通知方法（即织入事务管理）</em><br><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">aop:config</span> <span class="attr">proxy-traget-class</span>=<span class="string">"true"</span>&gt;</span></span><br><span class="line">         <span class="tag">&lt;<span class="name">!—定义切入点--</span>&gt;</span></span><br><span class="line">         <span class="tag">&lt;<span class="name">aop:pointcut</span> <span class="attr">id</span>=<span class="string">"serviceMethod"</span><span class="string">expression="execution(*</span> <span class="attr">com.test.service..</span>*(<span class="attr">..</span>))"/&gt;</span></span><br><span class="line">         <span class="comment">&lt;!--定义增强类，引用前面声明的事务通知--&gt;</span></span><br><span class="line">         <span class="tag">&lt;<span class="name">aop:advisor</span>  <span class="attr">pointcur-ref</span>=<span class="string">"serviceMethod"</span> <span class="attr">advice-ref</span>=<span class="string">"txAdvice"</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">aop:config</span>&gt;</span></span><br></pre></td></tr></table></figure></p>
+<blockquote>
+<h4 id="（2）使用-Transactional，通过annotation声明事务"><a href="#（2）使用-Transactional，通过annotation声明事务" class="headerlink" title="（2）使用@Transactional，通过annotation声明事务"></a>（2）使用@Transactional，通过annotation声明事务</h4><p>简单地使用@Transcational注解来标注方法，将方法定义为支持事务处理的（只能标注共有方法。也能标注类级的，则这个类中所有的共有方法都被定义为支持事务处理的）。<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Transactional</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">save</span><span class="params">()</span> </span>&#123;</span><br><span class="line">   <span class="comment">// TODO Auto-generated method stub</span></span><br><span class="line">   userDao.save();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+</blockquote>
+<p><em>使用这种方法，则在bean配置文件中只需启用<tx:annotation-driven>元素,如下所示：</tx:annotation-driven></em><br><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">tx:annotation-driven</span> </span><br><span class="line">	<span class="attr">proxy-target-class</span>=<span class="string">"false"</span> </span><br><span class="line">	<span class="attr">transaction-manager</span>=<span class="string">"transactionManager"</span>/&gt;</span></span><br></pre></td></tr></table></figure></p>
+<p><em>事务处理器的名称是transactionManager的话，可以省略transaction-manager这个属性</em></p>
+<blockquote>
+<h4 id="（3）配置数据源及hibernate"><a href="#（3）配置数据源及hibernate" class="headerlink" title="（3）配置数据源及hibernate"></a>（3）配置数据源及hibernate</h4><ul>
+<li>配置数据源 -&gt; </li>
+<li>配置sessionFactory -&gt; </li>
+<li>配置hibernateTemplate，设置属性sessionFactory为引用刚刚配置的sessionFactory -&gt; </li>
+<li>配置transactionManager，设置属性sessionFactory为引用刚刚配置的sessionFactory</li>
+</ul>
+</blockquote>
+<p><em>配置数据源示例</em><br><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">bean</span> <span class="attr">id</span>=<span class="string">"dataSource"</span> <span class="attr">class</span>=<span class="string">"org.apache.commons.dbcp.BasicDataSource"</span> </span><br><span class="line">	<span class="attr">destroy-method</span>=<span class="string">"close"</span></span><br><span class="line">	<span class="attr">p:driverClassName</span>=<span class="string">"com.mysql.jdbc.Driver"</span></span><br><span class="line">	<span class="attr">p:url</span>=<span class="string">"jdbc:mysql://localhost:3306/sampledb"</span></span><br><span class="line">	<span class="attr">p:username</span>=<span class="string">"root"</span></span><br><span class="line">	 <span class="attr">p:password</span>=<span class="string">"123456"</span> /&gt;</span></span><br></pre></td></tr></table></figure></p>
+<p><em>配置sessionFactory</em><br><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">bean</span> <span class="attr">id</span>=<span class="string">"sessionFactory"</span></span><br><span class="line">	<span class="attr">class</span>=<span class="string">"org.springframework.orm.hibernate3.annotation.AnnotationSessionFactoryBean"</span>&gt;</span></span><br><span class="line">     <span class="tag">&lt;<span class="name">!—引用数据源dataSource--</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span> <span class="attr">name</span>=<span class="string">"dataSource"</span>&gt;</span><span class="tag">&lt;<span class="name">ref</span> <span class="attr">local</span>=<span class="string">"dataSource"</span> /&gt;</span><span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	</span><br><span class="line">	<span class="tag">&lt;<span class="name">!—hibernate参数--</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span> <span class="attr">name</span>=<span class="string">"hibernateProperties"</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">props</span>&gt;</span></span><br><span class="line">			<span class="comment">&lt;!-- 配置Hibernate的方言--&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">prop</span> <span class="attr">key</span>=<span class="string">"hibernate.dialect"</span>&gt;</span></span><br><span class="line">				org.hibernate.dialect.MySQLDialect</span><br><span class="line">			<span class="tag">&lt;/<span class="name">prop</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">prop</span> <span class="attr">key</span>=<span class="string">"hibernate.hbm2ddl.auto"</span>&gt;</span>update<span class="tag">&lt;/<span class="name">prop</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">prop</span> <span class="attr">key</span>=<span class="string">"hibernate.show_sql"</span>&gt;</span>true<span class="tag">&lt;/<span class="name">prop</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">prop</span> <span class="attr">key</span>=<span class="string">"current_session_context_class"</span>&gt;</span>thread<span class="tag">&lt;/<span class="name">prop</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;/<span class="name">props</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	</span><br><span class="line">	<span class="tag">&lt;<span class="name">!—设置要扫描的包-</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span> <span class="attr">name</span>=<span class="string">"packagesToScan"</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">list</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">value</span>&gt;</span>cn.jxufe.domain<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;/<span class="name">list</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line"></span><br><span class="line">	<span class="tag">&lt;<span class="name">list</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">value</span>&gt;</span>cn.jxufe.domain.User<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">list</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span> --&gt;</span><br><span class="line"><span class="tag">&lt;/<span class="name">bean</span>&gt;</span></span><br></pre></td></tr></table></figure></p>
+<blockquote>
+<p>使用hibernate的话，无论是template还是transactioManager都要特别地去定义<br>hibernateTemplate引用的包不是在jdbc中，而是hibernate3中，参数sessionFactory引用的是前面包裹了数据源的sessionFactory:<br><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">bean</span> <span class="attr">name</span>=<span class="string">"hibernateTemplate"</span></span><br><span class="line"><span class="attr">class</span>=<span class="string">"org.springframework.orm.hibernate3.HibernateTemplate"</span>&gt;</span></span><br><span class="line">       <span class="tag">&lt;<span class="name">property</span> <span class="attr">name</span>=<span class="string">"sessionFactory"</span>&gt;</span></span><br><span class="line">              <span class="tag">&lt;<span class="name">ref</span> <span class="attr">bean</span>=<span class="string">"sessionFactory"</span>/&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">bean</span>&gt;</span></span><br></pre></td></tr></table></figure></p>
+<p>使用hibernate的话，事务管理器也是继承自hibernate3，还有一点和普通的transactionManager不同的是，这里不引用数据源，而是引用sessionFactory<br><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">bean</span> <span class="attr">id</span>=<span class="string">"transactionManager"</span></span><br><span class="line"><span class="attr">class</span>=<span class="string">"org.springframework.orm.hibernate3.HibernateTransactionManager"</span>&gt;</span></span><br><span class="line">       <span class="tag">&lt;<span class="name">property</span> <span class="attr">name</span>=<span class="string">"sessionFactory"</span> <span class="attr">ref</span>=<span class="string">"sessionFactory"</span>/&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">bean</span>&gt;</span></span><br></pre></td></tr></table></figure></p>
+<p>使用annotation定义事务 </p>
+</blockquote>
+<p>false默认用JDK动态代理，true使用cglib动态代理<br><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">tx:annotation-driven</span> <span class="attr">proxy-target-class</span>=<span class="string">"false"</span> <span class="attr">transaction-manager</span>=<span class="string">"transactionManager"</span>/&gt;</span></span><br></pre></td></tr></table></figure></p>
 
-                                                                  Execution(*joke(int,…))
-
-args() 在目标类方法的入参是指定类时（包含子类），切点匹配
-
-                   args(com.test.Waiter)
-
-                   和execution(* *(com.test.Waiter))的区别在于，execution是针对
-</code></pre><p>方法签名而言的，只匹配入参为(Waiter waiter)的，args还匹配(NaiveWaiter naiveWaiter)</p>
-<pre><code>         target() 按目标类类型匹配
-
-                   target(M)表示若目标类匹配M，则目标类所有方法都匹配切点
-
-         @args()
-
-
-
-         within() 通过类匹配模式串声明切点，不能做方法级的匹配
-
-                                     within(com.test.*)匹配test包下所有类
-
-                                     within(com.test..*)匹配test包和子包下所有类
-
-         @within(), @target(), @annotation(), args() 都是只接受注解类名作为入参
-
-【3】切点复合运算：可以通过运算符，通过多个切点函数匹配切点
-
-         示例：
-
-                   @After(“wintin(com.test.*) &amp;&amp; execution(* greetTo(..))”)
-
-                   @Before(“!target(com.test.Waiter) &amp;&amp; execution(“* serveTo(..)”)”)
-
-                   @AfterReturning(“target(com.test1..*) || target(com.test2..*)”)
-</code></pre><p>（2）基于Schema配置切面</p>
-<p>  首先定义增强方法的bean</p>
-<p>  然后配置<aop:config>:</aop:config></p>
-<pre><code>Config中有&lt;aop:pointcut&gt;,&lt;aop:aspect&gt;，如果pointcut直接在config中直接定义，则须满足前面的顺序。
-
-       可以定义多个&lt;aop:config&gt;, &lt;aop:config&gt;中还可以直接定义&lt;aop:advisor&gt;
-
-       &lt;aop:aspect&gt; 须配置的信息有ref=（引用增强方法bean），method=（增强方法）,pointcut/pointcut-ref=.
-
-       &lt;aop:pointcut&gt;中须配置的有 id=,expression=（定义切点）
-
-                       【1】简单的示例
-
-                                &lt;bean id=”adviceMethods” class=”com.test.AdviceMethods”/&gt;
-
-                                &lt;aop:config proxy-target-class=”true”&gt;
-
-                                          &lt;aop:aspect ref=”adviceMethods”&gt;
-
-                                                   &lt;aop:before pointcut=”target(com.test.Waiter) and execution(* greetTo(..))”
-</code></pre><p>method=”preGreeting”/&gt;</p>
-<pre><code>                   &lt;/aop:aspect&gt;    
-
-         &lt;/aop:config&gt;          
-
-         这里的切入点为一个匿名切入点，只能在这个aop:aspect里面使用
-
-         proxy-target-class=”true”表示使用CGLib动态代理
-
-【2】配置命名的切入点
-
-         &lt;aop:config proxy-target-class=”true”&gt;
-
-                   &lt;aop:aspect ref=”adviceMethods”&gt;
-
-                            &lt;aop: pointcut id=”greetToPointcut”
-</code></pre><p>expression=”target(com.test.Waiter) and execution(* greetTo(..))” /&gt;</p>
-<pre><code>                   &lt;aop:before pointcut-ref=”greetToPointcut” method=”preGreeting”/&gt;
-
-          &lt;/aop:aspect&gt;    
-
-&lt;/aop:config&gt; 
-</code></pre><p>aop:config中可以定义多个aop:aspect，所以配置命名pointcut就可以被不同的增强切面所访问（pointcut在aspect外面）</p>
-<aop:config proxy-target-class="”true”">
-
-<aop: pointcut="" id="”greetToPointcut”" expression="”target(com.test.Waiter)" and="" execution(*="" greetto(..))”="">
-
-<pre><code>          &lt;aop:aspect ref=”adviceMethods”&gt;
-
-                   &lt;aop:before pointcut-ref=”greetToPointcut” method=”preGreeting”/&gt;
-
-          &lt;/aop:aspect&gt;    
-
-
-
-          &lt;aop:aspect ref=”adviceMethods”&gt;
-
-                   &lt;aop:before pointcut-ref=”greetToPointcut” method=”postGreeting”/&gt;
-
-          &lt;/aop:aspect&gt;    
-
-&lt;/aop:config&gt; 
-</code></pre><p>【3】配置Advisor，advisor是切面和增强的复合体</p>
-<aop:config proxy-target-class="”true”">
-
-<aop: pointcut="" id="”greetToPointcut”" expression="”target(com.test.Waiter)" and="" execution(*="" greetto(..))”="">
-
-<pre><code>&lt;aop:advisor advice-ref:”testAdvice”
-
-                            pointcut-ref=”greetToPointcut”/&gt;
-</code></pre><p></p></aop:></aop:config><p></p>
-<bean id="”testAdvice”" class="”com.test.TestBeforeAdvice”"><br><br>【Advisor中的advice所依赖的类TestBeforeAdvice必须是实现了MethodBeforeAdvice等接口的advisor类】<br><br>public class TestBeforeAdvice implements MethodBeforeAdvice{<br><br>         public class before(Method method,Object[] args, Object target)<br><br>                   throws Throwable{<br><br>                   System.out.println(“——Test Before Advice”);<br><br>         }<br><br>}<br><br>2.  事务通知的声明<br>（1）在xml中配置声明事务<br><br>通过tx Schema中定义的<tx:advice>声明事务通知。使用前须先将schema定义添加到<beans>根元素中去<br><br>声明事务通知后，通过aop织入，在<aop:config>元素中声明一个advisor，将事务与切入点关联起来。<br><br>配置dataSource -&gt; 声明事务管理器，包裹数据源 –&gt;<br><br>声明事务通知，transaction-manager参数引用事务管理器 -&gt;<br><br>配置<aop:config>，定义切入点<aop:pointcut>在<aop:advisor>设置属性pointcut-ref和advice-ref，advice-ref为刚刚声明的事务通知 -&gt;<br><br>事务的配置完成<br><br><!--声明事务管理器，将dataSource包裹--><br><br><bean id="”transactionManager”" class="”org.springframework.jdbc.datasource.DataSourceTransactionManager”" p:datasource-ref="”dataSource”/"><br><br><br><br><br><br><!--声明事务通知,引用事务管理器--><br><br><tx:advice id="”txAdvice”" transaction-manager="”transactionManager”"><br><br>         <tx:attributes><br><br>                   <tx:method name="”*”/"><br><br>         </tx:method></tx:attributes><br><br></tx:advice><br><br><!--声明事务通知需要通知方法（即织入事务管理）--><br><br><aop:config proxy-traget-class="”true”"><br><br>         &lt;!—定义切入点–&gt;<br><br>         <aop:pointcut id="”serviceMethod”" expression="”execution(*" com.test.service..*(..))”=""><br><br>         <!--定义增强类，引用前面声明的事务通知--><br><br>         <aop:advisor pointcur-ref="”serviceMethod”" advice-ref="”txAdvice”"><br><br></aop:advisor></aop:pointcut></aop:config><br><br><br><br>（2）使用@Transactional，通过annotation声明事务<br><br>         简单地使用@Transcational注解来标注方法，将方法定义为支持事务处理的（只能标注共有方法。也能标注类级的，则这个类中所有的共有方法都被定义为支持事务处理的）。<br><br>         @Transactional<br><br>         public void save() {<br><br>                   // TODO Auto-generated method stub<br><br>                   userDao.save();<br><br>         }<br><br><br><br>使用这种方法，则在bean配置文件中只需启用<tx:annotation-driven>元素：<br><br><tx:annotation-driven proxy-target-class="false" transaction-manager="transactionManager"><br><br>事务处理器的名称是transactionManager的话，可以省略transaction-manager这个属性<br><br><br><br>（3）配置数据源及hibernate<br><br>         配置数据源 -&gt; 配置sessionFactory -&gt; 配置hibernateTemplate，设置属性sessionFactory为引用刚刚配置的sessionFactory -&gt; 配置transactionManager，设置属性sessionFactory为引用刚刚配置的sessionFactory<br><br>   <!-- 配置数据源 --><br><br>         <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close" p:driverclassname="com.mysql.jdbc.Driver" p:url="jdbc:mysql://localhost:3306/sampledb" p:username="root" p:password="123456"><br><br><br><br>&lt;!—配置sessionFactory&gt;<br><br>         <bean id="sessionFactory" class="org.springframework.orm.hibernate3.annotation.AnnotationSessionFactoryBean"><br><br>                     &lt;!—引用数据源dataSource–&gt;<br><br>                     <property name="dataSource"><ref local="dataSource"></ref></property><br><br>                     &lt;!—hibernate参数–&gt;<br><br>                     <property name="hibernateProperties"><br><br>                               <props><br><br>                                <!-- 配置Hibernate的方言--><br><br>                                         <prop key="hibernate.dialect"><br><br>                                          org.hibernate.dialect.MySQLDialect<br><br>                                         </prop><br><br>                                         <prop key="hibernate.hbm2ddl.auto">update</prop><br><br>                                         <prop key="hibernate.show_sql">true</prop><br><br>                                         <prop key="current_session_context_class">thread</prop><br><br>                               </props><br><br>                     </property><br><br>                     &lt;!—设置要扫描的包-&gt;<br><br>                     <property name="packagesToScan"><br><br>            <list><br><br>                <value>cn.jxufe.domain</value><br><br>            </list><br><br>        </property><br><br><br><br>                     <!-- <property name="annotatedClasses">
-
-                          <list>
-
-                                   <value>cn.jxufe.domain.User</value>
-
-                          </list>
-
-                     </property> --><br><br> </bean>
-
-
-
-<p>使用hibernate的话，无论是template还是transactioManager都要特别地去定义</p>
-<p> hibernateTemplate引用的包不是在jdbc中，而是hibernate3中，参数sessionFactory引用的是前面包裹了数据源的sessionFactory</p>
- <bean name="hibernateTemplate" class="org.springframework.orm.hibernate3.HibernateTemplate"><br><br>        <property name="sessionFactory"><br><br>               <ref bean="sessionFactory"><br><br>     </ref></property><br><br> </bean>
-
-<p> 使用hibernate的话，事务管理器也是继承自hibernate3，还有一点和普通的transactionManager不同的是，这里不引用数据源，而是引用sessionFactory</p>
- <bean id="transactionManager" class="org.springframework.orm.hibernate3.HibernateTransactionManager"><br><br>        <property name="sessionFactory" ref="sessionFactory"><br><br> </property></bean>
-
-
-
- <!-- 使用annotation定义事务 -->
-  <!-- false默认用JDK动态代理，true使用cglib动态代理 -->
-<tx:annotation-driven proxy-target-class="false" transaction-manager="transactionManager"></tx:annotation-driven></bean></tx:annotation-driven></tx:annotation-driven></bean></aop:advisor></aop:pointcut></aop:config></aop:config></beans></tx:advice></bean></aop:></aop:config>
       
     </div>
     

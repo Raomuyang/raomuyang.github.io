@@ -116,7 +116,7 @@
 				
 				<section class="switch-part switch-part2">
 					<div class="widget tagcloud" id="js-tagcloud">
-						<a href="/tags/Spring-MVC/" style="font-size: 10px;">Spring MVC</a> <a href="/tags/SpringMVC/" style="font-size: 10px;">SpringMVC</a>
+						<a href="/tags/AOP/" style="font-size: 10px;">AOP</a> <a href="/tags/Advisor/" style="font-size: 10px;">Advisor</a> <a href="/tags/Aspect/" style="font-size: 10px;">Aspect</a> <a href="/tags/Spring-MVC/" style="font-size: 20px;">Spring MVC</a>
 					</div>
 				</section>
 				
@@ -220,16 +220,9 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <p>1：Aspect切面的配置<br>（1）通过@Aspect注解定义切面，调用被定义为切点的方法时，会自动加入增强</p>
-<p>@Aspect//注解将PreGreetingAspect定义为一个切面</p>
-<p>public class PreGreetingAspect{</p>
-<pre><code>   @Before(“execution(* greetTo(..))”)//@Before,@After等注解表示增强类型
-
-   public void beforeGreeting(){
-
-System.out.println(“-----before advice-----”);
-</code></pre><p>}</p>
-<p>}</p>
+        <h3 id="1：Aspect切面的配置"><a href="#1：Aspect切面的配置" class="headerlink" title="1：Aspect切面的配置"></a>1：Aspect切面的配置</h3><blockquote>
+<h4 id="（1）通过-Aspect注解定义切面，调用被定义为切点的方法时，会自动加入增强"><a href="#（1）通过-Aspect注解定义切面，调用被定义为切点的方法时，会自动加入增强" class="headerlink" title="（1）通过@Aspect注解定义切面，调用被定义为切点的方法时，会自动加入增强"></a>（1）通过@Aspect注解定义切面，调用被定义为切点的方法时，会自动加入增强</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Aspect</span><span class="comment">//注解将PreGreetingAspect定义为一个切面</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">PreGreetingAspect</span></span>&#123;</span><br><span class="line"></span><br><span class="line">            <span class="meta">@Before</span>(<span class="string">"execution(* greetTo(..))"</span>)<span class="comment">//@Before,@After等注解表示增强类型</span></span><br><span class="line"></span><br><span class="line">            <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">beforeGreeting</span><span class="params">()</span></span>&#123;</span><br><span class="line"></span><br><span class="line">         System.out.println(<span class="string">"-----before advice-----"</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</blockquote>
       
     </div>
     
@@ -237,7 +230,7 @@ System.out.println(“-----before advice-----”);
       
       
 	<div class="article-tag tagcloud">
-		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/SpringMVC/">SpringMVC</a></li></ul>
+		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/AOP/">AOP</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Advisor/">Advisor</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Aspect/">Aspect</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Spring-MVC/">Spring MVC</a></li></ul>
 	</div>
 
       
