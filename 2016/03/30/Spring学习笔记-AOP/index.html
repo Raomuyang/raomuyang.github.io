@@ -14,7 +14,7 @@
 <meta property="og:site_name" content="Raomuyang">
 <meta property="og:description" content="1：Aspect切面的配置
 （1）通过@Aspect注解定义切面，调用被定义为切点的方法时，会自动加入增强1234567891011@Aspect//注解将PreGreetingAspect定义为一个切面public class PreGreetingAspect&amp;#123;            @Before(&quot;execution(* greetTo(..))&quot;)//@Before,@Afte">
-<meta property="og:updated_time" content="2016-04-02T13:45:50.867Z">
+<meta property="og:updated_time" content="2016-04-02T14:03:44.576Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Spring学习笔记-AOP,配置切面和声明事务">
 <meta name="twitter:description" content="1：Aspect切面的配置
@@ -264,19 +264,19 @@
 <li><code>* com..*.*Dao.find*(..)</code> 匹配所有前缀为com的包和子包下的后缀为Dao的类（接口）的所有前缀为find的方法</li>
 </ul>
 </li>
+<li>通过方法的入参定义切点  <ul>
+<li>execution(<em>joke(int,String,</em>))</li>
+<li>execution(*joke(int,…))</li>
 </ul>
 </li>
 </ul>
-</blockquote>
-<pre><code>+ 通过方法的入参定义切点  
-   + execution(*joke(int,String,*))
-   + execution(*joke(int,…))
-</code></pre><ul>
+</li>
 <li>args() 在目标类方法的入参是指定的类时（包含子类），匹配切点<ul>
 <li>args(com.test.Waiter)</li>
 </ul>
 </li>
 </ul>
+</blockquote>
 <p><em>` args和execution(</em> <em>(com.test.Waiter))的区别在于，execution是针对方法签名而言的，只匹配入参为(Waiter waiter)的，args还匹配(NaiveWaiter naiveWaiter)`</em></p>
 <ul>
 <li>target() 按目标类类型匹配<ul>
