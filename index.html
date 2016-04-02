@@ -223,49 +223,8 @@
         <blockquote>
 <p>苦艾初长，乃是清明。游子思归，奈何列车有时而不我待，为了在这传统时节早日到家，不得不选择翘掉周五晚上的《软件体系结构》。而临走前对老师放下“豪言”曰：已了解过‘云计算’的相关介绍，言既出，莫敢食，查阅相关资料，在此写下此文表述自己的想法。</p>
 </blockquote>
-<p>&nbsp;&nbsp;2006年谷歌推出了“Google 101计划”，并正式提出“云”的概念和理论。随后亚马逊、微软、惠普、雅虎、英特尔、IBM等公司都宣布了自己的“云计划”，云安全、云存储、内部云、外部云、公共云、私有云…[<a href="http://www.chinanews.com/it/2010/08-09/2456432.shtml" target="_blank" rel="external">1</a>] &nbsp;互联网的发展日新月异，尤其是近几年的速度快到不敢相信。我已经不记得在国内‘云’（Cloud）这个词为什么突然火起来的了，就像不知道为什么在我眼里11年塞班的世界，12年怎么就突然成为了安卓的世界。也许，是因为那是忙着高考的我们无暇顾及互联网世界的变化。</p>
+<p>&nbsp;&nbsp;2006年谷歌推出了“Google 101计划”，并正式提出“云”的概念和理论。随后亚马逊、微软、惠普、雅虎、英特尔、IBM等公司都宣布了自己的“云计划”，云安全、云存储、内部云、外部云、公共云、私有云…[<a href="http://www.chinanews.com/it/2010/08-09/2456432.shtml">1</a>] &nbsp;互联网的发展日新月异，尤其是近几年的速度快到不敢相信。我已经不记得在国内‘云’（Cloud）这个词为什么突然火起来的了，就像不知道为什么在我眼里11年塞班的世界，12年怎么就突然成为了安卓的世界。也许，是因为那是忙着高考的我们无暇顾及互联网世界的变化。</p>
 <p>&nbsp;&nbsp;在这互联网的时代，我们每天都在和互联网产品打交道，从百度云到微云到阿里云，‘云’对于我们大多数人来说既熟悉也陌生，那么‘云’究竟所谓何物？</p>
-<p>我们在互联网中所接触到的‘云’，有“云技术[Cloud Technology]”、“云计算[Cloud Computing]”和“云存储[Cloud Storage]”。这三者都是“云”，但却分属于不同的概念。</p>
-<blockquote>
-<h3 id="云技术-Cloud-Technology"><a href="#云技术-Cloud-Technology" class="headerlink" title="云技术[Cloud Technology]"></a>云技术[Cloud Technology]</h3><p>云技术是指基于云计算商业模式应用的网络技术、信息技术、整合技术、管理平台技术和应用技术的统称，其中包括虚拟化、分布式、并行运算等，强调的是技术的实现。</p>
-</blockquote>
-<p>我查阅了许多的资料，发现国内很多网站上在介绍云计算和云技术时模棱两可。事实上，云计算与云技术并没有必然的联系，前者是一种IT服务模式，为30%的技术+70%的模式；而云技术为用户调用的一个云服务背后复杂的实现技术，比如我们向服务端发出一条指令，这个指令是一个庞大的计算，而服务端通过网络将这个计算拆分成无数个小小的计算交由分布在网络上的其它服务器完成，待到计算完成后将处理结果返回给我们。</p>
-<p>我的理解：云计算是云技术的服务模式，云技术是云计算的技术实现</p>
-<p>打开百度百科的“云技术”这这个词条，你会发现里面对词条的解释夹杂着大量关于云计算的解释<br><img src="/blogimg/cloud/1.png" alt="Alt text"></p>
-<ul>
-<li>词条的中文名为“云技术”，英文名却为“Cloud Computing”</li>
-<li>在云技术的定义中，引用的参考文献是《云计算技术原理》（刘鹏）</li>
-</ul>
-<p>相比“云计算”的词条，“云技术”词条显得不那么专业，我认为词条编辑者也许是将云技术和云计算技术两个概念混淆了。</p>
-<blockquote>
-<h3 id="云计算-Cloud-Computing"><a href="#云计算-Cloud-Computing" class="headerlink" title="云计算[Cloud Computing]"></a>云计算[Cloud Computing]</h3><p>维基百科该词条的第一句话：<code>云计算（英语：Cloud Computing），是一种基于互联网的计算方式，通过这种方式，共享的软硬件资源和信息可以按需求提供给计算机和其他设备</code></p>
-</blockquote>
-<p>不知道大家是否和我一样，对C/S结构的系统和云计算之间的区别一直摸不着头脑：二者同样是基于互联网（局域网）的计算方式，同样可以共享软硬件资源，同样可以提供信息给其它设备，那么二者是什么关系呢？</p>
-<blockquote>
-<ul>
-<li><h4 id="C-S-Client-Server-model"><a href="#C-S-Client-Server-model" class="headerlink" title="C/S(Client-Server) model"></a>C/S(Client-Server) model</h4>又被翻译翻译作主/从架构，是自1980年代由大型计算机转变的一种网络架构，如今许多系统都是基于此结构实现，如我们尝试与</li>
-</ul>
-<p>服务器可是有状态或者无状态的。无状态的服务器不会保留任何两个请求之间的信息，有状态服务器会记住请求之间的信息。这些信息的作用域可以是全局的或者某个事务 （session）的。静态 HTML 页面服务器是一个无状态服务器的例子，Apache Tomcat 是一个有状态服务器。[<a href="https://zh.wikipedia.org/wiki/%E4%B8%BB%E5%BE%9E%E5%BC%8F%E6%9E%B6%E6%A7%8B" target="_blank" rel="external">维基百科：主從式架構</a>]</p>
-<ul>
-<li><h4 id="云计算"><a href="#云计算" class="headerlink" title="云计算"></a>云计算</h4>云计算源于分布式计算、并行计算、网格计算的发展，美国国家标准与技术研究院（NIST）将其定义为一种<strong>按使用量付费</strong>的模式，可以说是计算机概念的商业实现。云计算有许多种实现形式，其中就包括C/S Model。而云计算的特点在于，用户在在设计系统时不必再考虑Server如何实现、如何托管，而只需要关注有什么样的服务可以提供给他们，能得到什么样的虚拟化的资源，比如阿里云、亚马逊等服务商的VPS和虚拟主机应当属于此列。可以参考以下资料：</li>
-</ul>
-<p><em>云计算（cloudcomputing）是基于互联网的相关服务的增加、使用和交付模式，通常涉及通过互联网来提供动态易扩展且经常是虚拟化的资源。<br>(原文：Cloud computing is a style of computing in which dynamically scalable and often virtualized resources are provided as a service over the Internet.)</em>[<a href="http://baike.baidu.com/link?url=AMqZTs-WJwB9I9Dptp4nQrI3L0bTZTpoYI5raMIH22JbwGrMDi_Lmi7wup4aUcFKLS5rbzrur5bmhNtsrL5f5K" target="_blank" rel="external">百度百科:云计算</a>]</p>
-<p><em>Essentially it will mean that users of IT-related services will be able to focus on what the service provides them rather than how the services are implemented or hosted. Gartner maintains that although names for this type of operation have come into vogue at different times — utility computing, software as a service (SaaS) and application service providers — none has garnered widespread acceptance as the central theme for how IT-related services can be delivered globally.</em>[<a href="http://www.gartner.com/newsroom/id/707508" target="_blank" rel="external">Gartner Says Cloud Computing Will Be As Influential As E-business</a>]</p>
-<h3 id="云存储-Cloud-Storage"><a href="#云存储-Cloud-Storage" class="headerlink" title="云存储[Cloud Storage]"></a>云存储[Cloud Storage]</h3><p>云存储是通过集群应用、网络技术、分布式文件系统将网络中的大量存储设备集合起来协同工作，共同对外提供数据存储和业务访问功能的一个集合的系统。这意味着，存储设备可以在全世界的任何一个位置，而对用用户来说，某个文件可能存储在阿里云在青岛的存储设备中，另一个文件可能存在了上海的存储设备中。此时，云存储对于用户来说，不再是一个具体的存储设备，而是一种服务。这就是云存储的概念：<strong>重在服务</strong>，而非存储。</p>
-</blockquote>
-<p>所以，现在我们可以理解，为什么各种网盘可以改名为“云”，比如百度网盘改名为百度云，腾讯网盘改名为腾讯微云，360网盘现在叫360微云，因为他们提供的服务的确满足“云存储”的定义</p>
-<p>云存储服务所带来的服务自不用多说。它通过分布式的存储，增长了数据保存的时间。通过动态调节，可以按需增减容量。结束数据迁移工作，无需担心因存储技术升级而带来的额外的操作（如软盘到硬盘），从数据的安全、便携、存储保障来看，云存储都是时下的趋势。</p>
-<p>当然，以上讨论的只是云存储的概念，云存储的架构还分为“紧密耦合对称架构”和“松弛耦合非对称架构”，如有兴趣，可以参考[<a href="http://www.ibm.com/developerworks/cn/cloud/library/cl-cloudstorage/" target="_blank" rel="external">IBM文档库:云存储架构分析</a>]</p>
-<blockquote>
-<h4 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h4><p>记得以前我在画系统框架图时，相当然地把C/S结构中的Server等价于云，将服务端的数据库等价于云存储，以为通过网络连接的服务就是云。如今大致了解了“云”的概念，觉得当初自己的想法挺搞笑的。不过国内对“云”知识的普及力度真的是不够，基本都是互联网公司在通过“云”这个概念来炒作他们的产品，只要是个网络产品，都喜欢称之为“云”，所以时我们需要辨别的是它们是否满足“云”的特性。</p>
-<p>有一种说法，认为IT中的”Cloud”这个词来自于物理中的”Electron Cloud”（电子云），电子云具有概然行、弥漫性和分布性，而云技术、云计算和云存储中的云也都具有弥漫性、无所不在的分布性和社会性特征。我没有去查验是否属实，因为我们要关注的正是“云”的特性:弥漫、分别以及面向用户的服务。</p>
-<p>下面这两个大佬的话，也许就是“云”的未来</p>
-<ul>
-<li>全世界只需要5台电脑就足够了— IBM 托马斯·沃森</li>
-<li>个人用户的内存只需640K足矣— 比尔·盖茨</li>
-</ul>
-</blockquote>
-
       
     </div>
     
@@ -278,6 +237,10 @@
 
       
 
+      
+        <p class="article-more-link">
+          <a  href="/2016/04/02/关于云计算的一点理解/#more">more >></a>
+        </p>
       
       <div class="clearfix"></div>
     </div>
