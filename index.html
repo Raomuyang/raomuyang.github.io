@@ -32,7 +32,7 @@
 	<header id="header" class="inner">
 		<a href="/" class="profilepic">
 			
-			<img lazy-src="null" class="js-avatar">
+			<img lazy-src="/mine.jpg" class="js-avatar">
 			
 		</a>
 
@@ -101,11 +101,11 @@
 					<nav class="header-nav">
 						<div class="social">
 							
-								<a class="github" target="_blank" href="#" title="github">github</a>
+								<a class="github" target="_blank" href="http://github.com/raomuyang" title="github">github</a>
 					        
 								<a class="weibo" target="_blank" href="#" title="weibo">weibo</a>
 					        
-								<a class="rss" target="_blank" href="#" title="rss">rss</a>
+								<a class="rss" target="_blank" href="http://radrso.lofter.com" title="rss">rss</a>
 					        
 								<a class="zhihu" target="_blank" href="#" title="zhihu">zhihu</a>
 					        
@@ -125,17 +125,9 @@
 				<section class="switch-part switch-part3">
 					<div id="js-friends">
 					
-			          <a target="_blank" class="main-nav-link switch-friends-link" href="http://localhost:4000/">奥巴马的博客</a>
+			          <a target="_blank" class="main-nav-link switch-friends-link" href="http://chengjianhua.github.io">程建华的博客</a>
 			        
-			          <a target="_blank" class="main-nav-link switch-friends-link" href="http://localhost:4000/">卡卡的美丽传说</a>
-			        
-			          <a target="_blank" class="main-nav-link switch-friends-link" href="http://localhost:4000/">本泽马的博客</a>
-			        
-			          <a target="_blank" class="main-nav-link switch-friends-link" href="http://localhost:4000/">吉格斯的博客</a>
-			        
-			          <a target="_blank" class="main-nav-link switch-friends-link" href="http://localhost:4000/">习大大大不同</a>
-			        
-			          <a target="_blank" class="main-nav-link switch-friends-link" href="http://localhost:4000/">托蒂的博客</a>
+			          <a target="_blank" class="main-nav-link switch-friends-link" href="/vcmo.farbox.com">VCMO的博客</a>
 			        
 			        </div>
 				</section>
@@ -145,7 +137,7 @@
 				
 				<section class="switch-part switch-part4">
 				
-					<div id="js-aboutme">我是谁，我从哪里来，我到哪里去？我就是我，是颜色不一样的吃货…</div>
+					<div id="js-aboutme">做有格调的程序员，成为有情怀的工程师…</div>
 				</section>
 				
 			</div>
@@ -164,7 +156,7 @@
 		<header id="header" class="inner">
 			<div class="profilepic">
 			
-				<img lazy-src="null" class="js-avatar">
+				<img lazy-src="/mine.jpg" class="js-avatar">
 			
 			</div>
 			<hgroup>
@@ -186,11 +178,11 @@
 			<nav class="header-nav">
 				<div class="social">
 					
-						<a class="github" target="_blank" href="#" title="github">github</a>
+						<a class="github" target="_blank" href="http://github.com/raomuyang" title="github">github</a>
 			        
 						<a class="weibo" target="_blank" href="#" title="weibo">weibo</a>
 			        
-						<a class="rss" target="_blank" href="#" title="rss">rss</a>
+						<a class="rss" target="_blank" href="http://radrso.lofter.com" title="rss">rss</a>
 			        
 						<a class="zhihu" target="_blank" href="#" title="zhihu">zhihu</a>
 			        
@@ -298,38 +290,7 @@ System.out.println(“-----before advice-----”);
     <div class="article-entry" itemprop="articleBody">
       
         <h2 id="1-开始使用SpringMVC"><a href="#1-开始使用SpringMVC" class="headerlink" title="1.开始使用SpringMVC"></a>1.开始使用SpringMVC</h2><blockquote>
-<h4 id="【1】-配置web-xml以及在web-xml中配置DispatcherServlet："><a href="#【1】-配置web-xml以及在web-xml中配置DispatcherServlet：" class="headerlink" title="【1】. 配置web.xml以及在web.xml中配置DispatcherServlet："></a>【1】. 配置web.xml以及在web.xml中配置DispatcherServlet：</h4><pre><code>&lt;context-param&gt;
-        &lt;param-name&gt;contextConfigLocation&lt;/param-name&gt;
-        &lt;!—此处指定applicationContext等配置文件的位置--&gt;
-        &lt;param-value&gt;classpath:org.package.example&lt;/param-value&gt;
-&lt;/ context-param &gt;
-&lt;listener&gt;
-        &lt;listener-class&gt;
-           org.springframework.web.context.ContextLoaderListener
-        &lt;/listener-class&gt;
-&lt;/listener&gt;
-&lt;servlet&gt;
-        &lt;servlet-name&gt;此处定义一个名字&lt;/servlet-name&gt;
-        &lt;servlet-class&gt;
-            org.springframework.web.servlet.DispatcherServlet
-        &lt;/servlet-class&gt;
-        &lt;load-on-start&gt;1&lt;/load-on-start&gt;
-        &lt;!—以下这段可以不配置--&gt;
-    &lt;init-param&gt;
-        &lt;param-name&gt;
-         &lt;!—使用这个指定的话，servlet文件的名字就不是&lt;servlet-name&gt;-servlet.xml，而是servlet-name.xml--&gt;
-        &lt;/param-name&gt;
-        &lt;param-value&gt;
-                &lt;!—指定DispatcherServlet的路径--&gt;
-        &lt;/param-value&gt;
-    &lt;/init-param&gt;        
-&lt;/servlet&gt;
-&lt;servlet-mapping&gt;
-        &lt;servlet-name&gt;servlet-name&lt;servlet-name&gt;
-        &lt;url-pattern&gt;*.x(如*.html等)&lt;/url-pattern&gt;
-        &lt;!-指定处理某种后缀的http请求类型--&gt;
-&lt;/servlet-mapping&gt;
-</code></pre><p>在applicationContext等配置文件中，在最顶上要用到一下这句启动spring容器扫描类包，让注解生效<br><!-- 扫描类包，将标注Spring注解的类自动转化Bean，同时完成Bean的注入 --><br>            <context:component-scan base-package="cn.jxufe"/></p>
+<h4 id="【1】-配置web-xml以及在web-xml中配置DispatcherServlet："><a href="#【1】-配置web-xml以及在web-xml中配置DispatcherServlet：" class="headerlink" title="【1】. 配置web.xml以及在web.xml中配置DispatcherServlet："></a>【1】. 配置web.xml以及在web.xml中配置DispatcherServlet：</h4><figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"> &lt;context-param&gt;</span><br><span class="line">		&lt;param-name&gt;contextConfigLocation&lt;/param-name&gt;</span><br><span class="line">		&lt;!—此处指定applicationContext等配置文件的位置--&gt;</span><br><span class="line">		&lt;param-value&gt;classpath:org.package.example&lt;/param-value&gt;</span><br><span class="line">&lt;/ context-param &gt;</span><br><span class="line">&lt;listener&gt;</span><br><span class="line">		&lt;listener-class&gt;</span><br><span class="line">           org.springframework.web.context.ContextLoaderListener</span><br><span class="line">		&lt;/listener-class&gt;</span><br><span class="line">&lt;/listener&gt;</span><br><span class="line">&lt;servlet&gt;</span><br><span class="line">		&lt;servlet-name&gt;此处定义一个名字&lt;/servlet-name&gt;</span><br><span class="line">		&lt;servlet-class&gt;</span><br><span class="line">				org.springframework.web.servlet.DispatcherServlet</span><br><span class="line">		&lt;/servlet-class&gt;</span><br><span class="line">		&lt;load-on-start&gt;1&lt;/load-on-start&gt;</span><br><span class="line">		&lt;!—以下这段可以不配置--&gt;</span><br><span class="line">		&lt;init-param&gt;</span><br><span class="line">			&lt;param-name&gt;</span><br><span class="line">			 	&lt;!—使用这个指定的话，servlet文件的名字就不是&lt;servlet-name&gt;-servlet.xml，而是servlet-name.xml--&gt;</span><br><span class="line">			&lt;/param-name&gt;</span><br><span class="line">			&lt;param-value&gt;</span><br><span class="line">				&lt;!—指定DispatcherServlet的路径--&gt;</span><br><span class="line">			&lt;/param-value&gt;</span><br><span class="line">		&lt;/init-param&gt;		</span><br><span class="line">&lt;/servlet&gt;</span><br><span class="line">&lt;servlet-mapping&gt;</span><br><span class="line">		&lt;servlet-name&gt;servlet-name&lt;servlet-name&gt;</span><br><span class="line">		&lt;url-pattern&gt;*.x(如*.html等)&lt;/url-pattern&gt;</span><br><span class="line">		&lt;!-指定处理某种后缀的http请求类型--&gt;</span><br><span class="line">&lt;/servlet-mapping&gt;</span><br></pre></td></tr></table></figure>
 </blockquote>
       
     </div>
