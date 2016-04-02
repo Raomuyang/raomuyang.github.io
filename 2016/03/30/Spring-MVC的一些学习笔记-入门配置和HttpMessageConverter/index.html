@@ -6,19 +6,19 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" >
   <title>Spring MVC的一些学习笔记-入门配置和HttpMessageConverter | Raomuyang</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="1.开始使用SpringMVC
-【1】. 配置web.xml以及在web.xml中配置DispatcherServlet：12345678910111213141516171819202122232425262728293031 &amp;lt;context-param&amp;gt;		&amp;lt;param-name&amp;gt;contextConfigLocation&amp;lt;/param-name&amp;gt;		&amp;l">
+  <meta name="description" content="1.开始使用Spring MVC
+【1】. 配置web.xml以及在web.xml中配置DispatcherServlet：12345678910111213141516171819202122232425262728293031 &amp;lt;context-param&amp;gt;		&amp;lt;param-name&amp;gt;contextConfigLocation&amp;lt;/param-name&amp;gt;		&amp;">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Spring MVC的一些学习笔记-入门配置和HttpMessageConverter">
 <meta property="og:url" content="http://yoursite.com/2016/03/30/Spring-MVC的一些学习笔记-入门配置和HttpMessageConverter/index.html">
 <meta property="og:site_name" content="Raomuyang">
-<meta property="og:description" content="1.开始使用SpringMVC
-【1】. 配置web.xml以及在web.xml中配置DispatcherServlet：12345678910111213141516171819202122232425262728293031 &amp;lt;context-param&amp;gt;		&amp;lt;param-name&amp;gt;contextConfigLocation&amp;lt;/param-name&amp;gt;		&amp;l">
-<meta property="og:updated_time" content="2016-04-02T10:17:50.903Z">
+<meta property="og:description" content="1.开始使用Spring MVC
+【1】. 配置web.xml以及在web.xml中配置DispatcherServlet：12345678910111213141516171819202122232425262728293031 &amp;lt;context-param&amp;gt;		&amp;lt;param-name&amp;gt;contextConfigLocation&amp;lt;/param-name&amp;gt;		&amp;">
+<meta property="og:updated_time" content="2016-04-02T11:22:42.972Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Spring MVC的一些学习笔记-入门配置和HttpMessageConverter">
-<meta name="twitter:description" content="1.开始使用SpringMVC
-【1】. 配置web.xml以及在web.xml中配置DispatcherServlet：12345678910111213141516171819202122232425262728293031 &amp;lt;context-param&amp;gt;		&amp;lt;param-name&amp;gt;contextConfigLocation&amp;lt;/param-name&amp;gt;		&amp;l">
+<meta name="twitter:description" content="1.开始使用Spring MVC
+【1】. 配置web.xml以及在web.xml中配置DispatcherServlet：12345678910111213141516171819202122232425262728293031 &amp;lt;context-param&amp;gt;		&amp;lt;param-name&amp;gt;contextConfigLocation&amp;lt;/param-name&amp;gt;		&amp;">
   
     <link rel="alternative" href="/atom.xml" title="Raomuyang" type="application/atom+xml">
   
@@ -233,7 +233,7 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <h2 id="1-开始使用SpringMVC"><a href="#1-开始使用SpringMVC" class="headerlink" title="1.开始使用SpringMVC"></a>1.开始使用SpringMVC</h2><blockquote>
+        <h2 id="1-开始使用Spring-MVC"><a href="#1-开始使用Spring-MVC" class="headerlink" title="1.开始使用Spring MVC"></a>1.开始使用Spring MVC</h2><blockquote>
 <h4 id="【1】-配置web-xml以及在web-xml中配置DispatcherServlet："><a href="#【1】-配置web-xml以及在web-xml中配置DispatcherServlet：" class="headerlink" title="【1】. 配置web.xml以及在web.xml中配置DispatcherServlet："></a>【1】. 配置web.xml以及在web.xml中配置DispatcherServlet：</h4><figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"> &lt;context-param&gt;</span><br><span class="line">		&lt;param-name&gt;contextConfigLocation&lt;/param-name&gt;</span><br><span class="line">		&lt;!—此处指定applicationContext等配置文件的位置--&gt;</span><br><span class="line">		&lt;param-value&gt;classpath:org.package.example&lt;/param-value&gt;</span><br><span class="line">&lt;/ context-param &gt;</span><br><span class="line">&lt;listener&gt;</span><br><span class="line">		&lt;listener-class&gt;</span><br><span class="line">           org.springframework.web.context.ContextLoaderListener</span><br><span class="line">		&lt;/listener-class&gt;</span><br><span class="line">&lt;/listener&gt;</span><br><span class="line">&lt;servlet&gt;</span><br><span class="line">		&lt;servlet-name&gt;此处定义一个名字&lt;/servlet-name&gt;</span><br><span class="line">		&lt;servlet-class&gt;</span><br><span class="line">				org.springframework.web.servlet.DispatcherServlet</span><br><span class="line">		&lt;/servlet-class&gt;</span><br><span class="line">		&lt;load-on-start&gt;1&lt;/load-on-start&gt;</span><br><span class="line">		&lt;!—以下这段可以不配置--&gt;</span><br><span class="line">		&lt;init-param&gt;</span><br><span class="line">			&lt;param-name&gt;</span><br><span class="line">			 	&lt;!—使用这个指定的话，servlet文件的名字就不是&lt;servlet-name&gt;-servlet.xml，而是servlet-name.xml--&gt;</span><br><span class="line">			&lt;/param-name&gt;</span><br><span class="line">			&lt;param-value&gt;</span><br><span class="line">				&lt;!—指定DispatcherServlet的路径--&gt;</span><br><span class="line">			&lt;/param-value&gt;</span><br><span class="line">		&lt;/init-param&gt;		</span><br><span class="line">&lt;/servlet&gt;</span><br><span class="line">&lt;servlet-mapping&gt;</span><br><span class="line">		&lt;servlet-name&gt;servlet-name&lt;servlet-name&gt;</span><br><span class="line">		&lt;url-pattern&gt;*.x(如*.html等)&lt;/url-pattern&gt;</span><br><span class="line">		&lt;!-指定处理某种后缀的http请求类型--&gt;</span><br><span class="line">&lt;/servlet-mapping&gt;</span><br></pre></td></tr></table></figure>
 </blockquote>
 <a id="more"></a>
@@ -276,18 +276,14 @@
 </blockquote>
 <hr>
 <h2 id="2-使用HttpMessageConverter"><a href="#2-使用HttpMessageConverter" class="headerlink" title="2.使用HttpMessageConverter"></a>2.使用HttpMessageConverter<t></t></h2><blockquote>
-<p>定义HttpMessageConverter</p>
-<h6 id="1-HttpMessageConverter的介绍"><a href="#1-HttpMessageConverter的介绍" class="headerlink" title="(1).HttpMessageConverter的介绍"></a>(1).HttpMessageConverter的介绍</h6><p><strong>HttpMessageConverter</strong> 负责将请求信息转换为一个对象。</p>
-</blockquote>
-<p>在Spring中默认的<code>AnnotationMethodHandlerAdapter</code>默认装配了以下的HttpMessageConverter：</p>
-<blockquote>
+<h6 id="1-HttpMessageConverter的介绍"><a href="#1-HttpMessageConverter的介绍" class="headerlink" title="(1).HttpMessageConverter的介绍"></a>(1).HttpMessageConverter的介绍</h6></blockquote>
+<p><strong>HttpMessageConverter</strong> 负责将请求信息转换为一个对象。在Spring中默认的<code>AnnotationMethodHandlerAdapter</code>默认装配了以下的HttpMessageConverter： </p>
 <ul>
 <li>StringHttpMessageConverter</li>
 <li>ByteArrayHttpMessageConverter，</li>
 <li>SourceHttpMessageConverter</li>
 <li>XmlAwareFromHttpMessageConverter</li>
 </ul>
-</blockquote>
 <p>如果还需装配其它的HttpMessageConverter，则需要在<servlet-name>-servlet.xml这个web容器中显式地定义</servlet-name></p>
 <blockquote>
 <p><strong>示例：</strong></p>
@@ -299,9 +295,11 @@
 <li>使用@RequestBody和@ResponseBody进行标注</li>
 <li>使用HttpEntity<t>/ResponseEntity<t>作为处理方法的入参和返回值</t></t></li>
 </ul>
-<p><strong>示例：</strong></p>
-<h6 id="【1】-RequestBody和-ResponseBody的使用"><a href="#【1】-RequestBody和-ResponseBody的使用" class="headerlink" title="【1】@RequestBody和@ResponseBody的使用"></a>【1】@RequestBody和@ResponseBody的使用</h6><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@RequestMapping</span>(“handle1”)</span><br><span class="line"><span class="function">Public String <span class="title">handle1</span><span class="params">(@RequestBody String requestBody)</span></span>&#123;</span><br><span class="line">	System.out.println(requestBody);</span><br><span class="line">	Return “success”;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 </blockquote>
+<p><strong>示例：</strong></p>
+<blockquote>
+<h6 id="【1】-RequestBody和-ResponseBody的使用"><a href="#【1】-RequestBody和-ResponseBody的使用" class="headerlink" title="【1】@RequestBody和@ResponseBody的使用"></a>【1】@RequestBody和@ResponseBody的使用</h6></blockquote>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@RequestMapping</span>(“handle1”)</span><br><span class="line"><span class="function">Public String <span class="title">handle1</span><span class="params">(@RequestBody String requestBody)</span></span>&#123;</span><br><span class="line">	System.out.println(requestBody);</span><br><span class="line">	Return “success”;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>handle1通过@RequestBody自动将请求的报文转换为字符串绑定到requestBody入参中</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@ResponseBody</span></span><br><span class="line"><span class="meta">@RequestMapping</span>(value=”/handle2/&#123;imageId&#125;”)</span><br><span class="line"><span class="keyword">public</span> <span class="keyword">byte</span>[] handle2(<span class="meta">@PathVariable</span>(“imageId”) String imageId) <span class="keyword">throws</span> IOException&#123;</span><br><span class="line">	System.out.println(“Load image of ”+imageId);</span><br><span class="line">	Resource res=<span class="keyword">new</span> ClassPathResource(“/image”+imageId+”.jpg”);</span><br><span class="line">	<span class="keyword">byte</span>[] fileData=FileCopyUtils.copyToByteArray(res.getInputStream());</span><br><span class="line">	<span class="keyword">return</span> fileData;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>handle2在方法体中读取一张图片，并将图片作为输出流返回，而@ResponseBody的标识即可将该返回值输出到相应流中，客户端将显示这张图片。<br><strong>内部流程：</strong>在handle1方法中，MVC根据@RequestBody的标注查找到相应的HttpMessageConverter，将请求信息转换绑定到requestBody入参上。handle2方法最顶上拥有一个@ResponseBody的注解，返回值为byte[]，spring mvc会根据返回值类型匹配ByteArrayHttpMessageConverter对返回值进行处理，由此将图片数据流输出到客户端</p>
