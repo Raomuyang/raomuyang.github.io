@@ -18,6 +18,7 @@ install:
 
 before_script:
     - hexo init $GENERATE_DIR/
+    - rm -r $GENERATE_DIR/source
     - cp -r ./* $GENERATE_DIR
     - cd $GENERATE_DIR
 
