@@ -707,7 +707,7 @@ public interface ServerListUpdater {
 
 ### BTW
 
-* `ribbon-loadbalancer`的文档真非常剪短，很多东西都不明就里而且googole不到，只能通过看源代码来了解实现机理以及如何使用
+* `ribbon-loadbalancer`的文档真非常简短，很多东西都不明就里而且googole不到，只能通过看源代码来了解实现机理以及如何使用
 * `ribbon`的官方文档中没有说在pom依赖中应该添加哪些依赖，`ribbon-loadbalancer-2.3.0`的pom中看到所有的依赖都是使用`<scope>runtime</scope>`，在使用的时候屡屡受挫；想了解其他人是如何使用这个模块，但是只能搜到大家都直接用spring-cloud集成的功能
 
 #### 关于 `WeightedResponseTimeRule`的负载均衡规则
