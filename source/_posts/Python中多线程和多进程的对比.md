@@ -13,7 +13,7 @@ meta: Python中多线程和多进程的对比
 资料显示，如果多线程的进程是**CPU密集型**的，那多线程并不能有多少效率上的提升，相反还可能会因为线程的频繁切换，导致效率下降，推荐使用多进程；如果是**IO密集型**，多线程进程可以利用IO阻塞等待时的空闲时间执行其他线程，提升效率。所以我们根据实验对比不同场景的效率
 
 | 操作系统     | CPU | 内存 | 硬盘 |
-| ------------- |------|----|:----:|    
+| ------------|---|---|---|
 | Windows 10     | 双核 |8GB|机械硬盘|
 
 <!--more-->
@@ -86,10 +86,13 @@ for x in range(10):
     http_request()
 print("Line Http Request", time.time() - t)
 ```
-> 输出  
-* CPU密集：95.6059999466、91.57099986076355 92.52800011634827、 99.96799993515015
-* IO密集：24.25、21.76699995994568、21.769999980926514、22.060999870300293
-* 网络请求密集型: 4.519999980926514、8.563999891281128、4.371000051498413、4.522000074386597、14.671000003814697
+> 输出
+
+|               |                 |                  |                   |                   |
+| -----------  |:----------------:|:-----------------:|:------------------:|:---------------:|
+| CPU密集      |   95.6059999466   | 91.57099986076355 | 92.52800011634827 | 99.96799993515015|
+| IO密集       |   24.25           | 21.76699995994568 | 21.769999980926514| 22.060999870300293|
+| 网络请求密集型 | 4.519999980926514 | 8.563999891281128 | 4.371000051498413 | 14.671000003814697|
 
 ###### (6)测试多线程并发执行CPU密集操作所需时间
 ```python
@@ -100,8 +103,8 @@ for x in range(10):
     counts.append(thread)
     thread.start()
 
-e = counts.__len__()
 while True:
+    e = len(counts)
     for th in counts:
         if not th.is_alive():
             e -= 1
@@ -109,7 +112,12 @@ while True:
         break
 print(time.time() - t)
 ```
-> Output: 99.9240000248 、101.26400017738342、102.32200002670288
+
+|output|
+|------|
+|99.9240000248|
+|101.26400017738342|
+|102.32200002670288|
 
 ###### (7)测试多线程并发执行IO密集操作所需时间
 ```Python
@@ -125,8 +133,9 @@ for x in range(10):
     ios.append(thread)
     thread.start()
 
-e = ios.__len__()
+
 while True:
+    e = len(ios)
     for th in ios:
         if not th.is_alive():
             e -= 1
@@ -134,7 +143,11 @@ while True:
         break
 print(time.time() - t)
 ```
-> Output: 25.69700002670288、24.02400016784668
+
+| Output |
+|----|
+|25.69700002670288|
+|24.02400016784668|
 
 ###### (8)测试多线程并发执行网络密集操作所需时间
 ```python
@@ -146,8 +159,8 @@ for x in range(10):
     ios.append(thread)
     thread.start()
 
-e = ios.__len__()
 while True:
+    e = len(ios)
     for th in ios:
         if not th.is_alive():
             e -= 1
@@ -155,7 +168,11 @@ while True:
         break
 print("Thread Http Request", time.time() - t)
 ```
-> Output: 0.7419998645782471、0.3839998245239258、0.3900001049041748
+| Output|
+| ---|
+|0.7419998645782471|
+|0.3839998245239258|
+|0.3900001049041748|
 
 ###### (9)测试多进程并发执行CPU密集操作所需时间
 ```python
@@ -165,8 +182,9 @@ for x in range(10):
     process = Process(target=count, args=(1,1))
     counts.append(process)
     process.start()
-e = counts.__len__()
+
 while True:
+    e = len(counts)
     for th in counts:
         if not th.is_alive():
             e -= 1
@@ -174,7 +192,11 @@ while True:
         break
 print("Multiprocess cpu", time.time() - t)
 ```
-> Output: 54.342000007629395、53.437999963760376
+
+|Output|
+|---|
+|54.342000007629395|
+|53.437999963760376|
 
 ###### (10)测试多进程并发执行IO密集型操作
 ```python
@@ -186,8 +208,9 @@ for x in range(10):
     ios.append(process)
     process.start()
 
-e = ios.__len__()
+
 while True:
+    e = len(ios)
     for th in ios:
         if not th.is_alive():
             e -= 1
@@ -195,7 +218,11 @@ while True:
         break
 print("Multiprocess IO", time.time() - t)
 ```
-> Output: 12.509000062942505、13.059000015258789
+
+|Output|
+|---|
+|12.509000062942505|
+|13.059000015258789|
 
 ###### (11)测试多进程并发执行Http请求密集型操作
 ```python
@@ -207,8 +234,8 @@ for x in range(10):
     ios.append(process)
     process.start()
 
-e = httprs.__len__()
 while True:
+    e = len(httprs)
     for th in httprs:
         if not th.is_alive():
             e -= 1
@@ -217,7 +244,9 @@ while True:
 print("Multiprocess Http Request", time.time() - t)
 ```  
 
->  Output: 0.5329999923706055、0.4760000705718994  
+|Output|
+|0.5329999923706055|
+|0.4760000705718994|  
 
 ---
 ##### 实验结果
