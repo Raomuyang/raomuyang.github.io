@@ -16,22 +16,14 @@ install:
   - npm install -g hexo-generator-sitemap
   - npm install -g hexo-generator-baidu-sitemap
 
-before_script:
-    - hexo init $GENERATE_DIR/
-    - rm -r $GENERATE_DIR/source
-    - cp -r ./* $GENERATE_DIR
-    - cd $GENERATE_DIR
-
 script:
-    - git clone https://github.com/theme-next/hexo-theme-next themes/next
-    - cp $SOURCE/theme_config.yml themes/next/_config.yml
-    - hexo g
+    - make compile
 deploy:
   provider: pages
   skip-cleanup: true
   github-token: $GITHUB_TOKEN
   target-branch: master
-  local-dir: ../blog-generage/public/
+  local-dir: ../blog-generate/public/
   on:
     branch: master
 
