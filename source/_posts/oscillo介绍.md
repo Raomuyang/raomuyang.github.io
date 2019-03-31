@@ -5,11 +5,67 @@ categories: [写点小玩具]
 tags: [写点小玩具]
 ---
 
-如果使用过`glances`，并且有一颗geek的心的话，一定会觉得它很炫酷，并且十分实用。不过如果想观察一个程序从运行开始到结束的cpu占用率怎么办？好办，利用python的`psutil`异步观察就行。
+![demo](https://raw.githubusercontent.com/raomuyang/cmd-oscillo/master/demo/compare-gzip.png)
+
+如果使用过`glances`，如果有一颗geek的心的话，一定会觉得不但酷炫而且十分实用。不过如果想观察一个程序从运行开始到结束的cpu占用率怎么办？好办，利用python的`psutil`异步观察就行。
+
+
+介绍一下放在github上的一个项目： [oscillo](https://pypi.org/project/oscillo/) 
 
 <!-- more -->
 
-[oscillo](https://pypi.org/project/oscillo/) 这个工具的原型，来自于一次为了对比几种客户端性能而写的一个脚本，它的原理就是：
+### 使用方式
+使用方式很简单，直接 `pip install oscillo`即可安装使用.
+
+命令行参数的格式是 `"<name>: <command [args]>"`：
+
+* `name`: 命令行的别名/id (任意字符串)，当`--commands/-c`参数指定多个命令时，该值将作为命令的唯一标识，不可重复
+* `command [args]`: 需要测试资源消耗的命令，比如 `gzip file.ext`
+
+示例如下，监控gzip压缩一个文件时耗费的cpu、memory和时间：
+ 
+``` 
+oscillo -c 'gzip: gzip file.ext' -o output-file
+```
+
+* -c 代表将执行一个linux cmd 命令。参数后面可以跟以空格隔开的多个参数
+
+* -o 结果输出文件:
+
+命令执行完成后，会在当前目录下生成一个`<output-file>.log` 文件。文本结构是json 格式. 数据结构如下
+```
+{
+  "test": {
+            "elapsed": 0.022143125534057617,  //总执行时间
+            "cpu": [], 
+            "memory": []
+          }
+}
+
+```
+同时会产生一个`<output-file>.png`文件，`<output-file>`由`-o`参数指定，默认值为`metrix`
+
+在控制台上，`oscillo`会打印summary信息，其中包含命令的耗时、最大内存使用、最大cpu使用、退出码等在控制台上，`oscillo`会打印summary信息，其中包含命令的耗时、最大内存使用、最大cpu使用、退出码等
+
+如果想对比多个命令对资源的消耗，可以使用 `-c/--commands` 选项指定多条命令, e.g.:
+
+对比`gzip`和`tar`命令对资源的消耗：
+
+```shell
+oscillo -c 't1: gzip file.ext'  't2: tar czf target.tar.gz file1' -o output
+```
+
+效果如下：
+
+![demo](https://raw.githubusercontent.com/raomuyang/cmd-oscillo/master/demo/metrix.log.png)
+
+![demo](https://raw.githubusercontent.com/raomuyang/cmd-oscillo/master/demo/compare-gzip.png)
+
+
+
+### 实现原理
+
+这个工具的原型，来自于一次为了对比几种客户端性能而写的一个脚本，它的原理就是：
 
 * 在程序中启动一个子进程，获取进程id
 * 通过`psutil`观察该进程，每隔一段时间记录一次cpu和内存的负载
@@ -59,13 +115,8 @@ class Stopwatch(object):
 ```
 
 
-好了，以下是使用效果：
-
-
-![demo](https://raw.githubusercontent.com/raomuyang/cmd-oscillo/master/demo/metrix.log.png)
-
-![demo](https://raw.githubusercontent.com/raomuyang/cmd-oscillo/master/demo/cli.png)
-
 ### BTW
+
+当前的功能比较简单，可能有很多东西没用想到，欢迎使用和完善
 
 git仓库: [oscillo](https://github.com/raomuyang/cmd-oscillo)
