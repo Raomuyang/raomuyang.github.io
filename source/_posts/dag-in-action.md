@@ -120,5 +120,5 @@ analysis {
 
 ```
 
-配置的解析渲染过程，在flowon中已经实现，可以参考项目中的示例代码： [demo](https://raw.githubusercontent.com/raomuyang/flowon/master/src/demo)
+配置的解析渲染过程，在flowon中已经实现，可以参考项目中的示例代码： [demo](https://github.com/raomuyang/flowon/tree/master/src/demo)
 

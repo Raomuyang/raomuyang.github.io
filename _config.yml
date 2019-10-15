@@ -73,6 +73,10 @@ google_analytics: UA-82755477-1
 # Extensions
 ## Plugins: https://hexo.io/plugins/
 ## Themes: https://hexo.io/themes/
+Plugins:
+- hexo-generator-baidu-sitemap
+- hexo-generator-sitemap
+
 theme: next
 
 # Deployment
