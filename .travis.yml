@@ -22,6 +22,6 @@ deploy:
   target-branch: master
   local-dir: ../blog-generate/public/
   on:
-    branch: master
+    branch: CICD 
 
   repo: raomuyang/raomuyang.github.io
