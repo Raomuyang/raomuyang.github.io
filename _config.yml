@@ -86,6 +86,11 @@ deploy:
   repo: git@raomuyang.github.com:raomuyang/raomuyang.github.io.git
   branch: master
 
+search:
+  path: search.xml
+  field: post
+  format: html
+  limit: 100
 # hexo-search 引擎，和Swiftype2选1
 #search:
 #  path: search.xml

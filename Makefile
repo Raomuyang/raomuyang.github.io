@@ -5,6 +5,8 @@ env:
 	npm install --save hexo-generator-sitemap
 	npm install --save hexo-generator-baidu-sitemap
 	npm install --save hexo-generator-searchdb
+	npm install hexo-generator-feed --save
+
 
 prepare:
 	mkdir -p ../blog-generate 
