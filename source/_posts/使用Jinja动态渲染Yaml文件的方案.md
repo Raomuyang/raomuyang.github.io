@@ -4,7 +4,6 @@ date: 2019-06-05 15:48:14
 tags: [yml, Jinja2]
 meta: [参数渲染, yml]
 ---
-* [Jinja2文档](http://docs.jinkan.org/docs/jinja2/)
 
 最近在开发一个工具时遇到了一个根据输入参数渲染yml文件的问题:
 
@@ -217,3 +216,4 @@ loaddata_node_bam{{index}}.data = {{ loadbamList('bam', index)}}
 
 > 另外，如果想知道我的具体实现代码，可以参考这个工具 [`gparams`](https://pypi.org/project/gparams/)，这是我为了解决前方提到的问题开发的python库。当然这个并不是完全通用的，里面结合实际的业务特点做了一些定制
 
+> 关于Jinja模板对语言支持的问题，Java也有相关的工具库用于处理渲染： [Jinjava](https://github.com/HubSpot/jinjava)，当然我们也是可以选择其它模板语言的
