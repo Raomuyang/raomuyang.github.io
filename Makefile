@@ -2,10 +2,11 @@
 
 env:
 	npm install -g hexo-cli
-	npm install --save hexo-generator-sitemap
-	npm install --save hexo-generator-baidu-sitemap
-	npm install --save hexo-generator-searchdb
-	npm install hexo-generator-feed --save
+	npm install -g hexo-generator-sitemap
+	npm install -g hexo-generator-baidu-sitemap
+	npm install -g hexo-generator-searchdb
+	npm install -g hexo-filter-mermaid-diagrams
+	npm install -g hexo-generator-feed
 
 
 prepare:
