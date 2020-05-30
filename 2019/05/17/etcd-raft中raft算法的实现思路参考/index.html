@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon.png">
+  <link rel="mask-icon" href="/favicon.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://atomicer.cn').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="TL;DR简单记录一下实践过程，并结合对etcd&#x2F;raft源码的阅读，总结一下自己的缺陷以及etcd中可借鉴的思想。本文没有介绍raft算法如何实现，关于raft算法的介绍可直接参考以下文档：  《The Raft Consensus Algorithm》 《In Search of an Understandable Consensus Algorithm》 《Raft一致性算法论文：探索一种易">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Raft算法及etcd&#x2F;raft的实现思路借鉴">
+<meta property="og:url" content="http://atomicer.cn/2019/05/17/etcd-raft%E4%B8%ADraft%E7%AE%97%E6%B3%95%E7%9A%84%E5%AE%9E%E7%8E%B0%E6%80%9D%E8%B7%AF%E5%8F%82%E8%80%83/index.html">
+<meta property="og:site_name" content="木陽">
+<meta property="og:description" content="TL;DR简单记录一下实践过程，并结合对etcd&#x2F;raft源码的阅读，总结一下自己的缺陷以及etcd中可借鉴的思想。本文没有介绍raft算法如何实现，关于raft算法的介绍可直接参考以下文档：  《The Raft Consensus Algorithm》 《In Search of an Understandable Consensus Algorithm》 《Raft一致性算法论文：探索一种易">
+<meta property="og:image" content="http://cloud.atomicer.cn/blog-img/20190517/raft-state-machinepng">
+<meta property="article:published_time" content="2019-05-17T16:27:43.000Z">
+<meta property="article:modified_time" content="2020-05-30T09:25:26.300Z">
+<meta property="article:author" content="木陽">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://cloud.atomicer.cn/blog-img/20190517/raft-state-machinepng">
+
+<link rel="canonical" href="http://atomicer.cn/2019/05/17/etcd-raft%E4%B8%ADraft%E7%AE%97%E6%B3%95%E7%9A%84%E5%AE%9E%E7%8E%B0%E6%80%9D%E8%B7%AF%E5%8F%82%E8%80%83/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>Raft算法及etcd/raft的实现思路借鉴 | 木陽</title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-82755477-1"></script>
+    <script>
+      if (CONFIG.hostname === location.hostname) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-82755477-1');
+      }
+    </script>
+
+
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?28428a78c9ad21d09428f89378d9c50b";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">木陽</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <h1 class="site-subtitle" itemprop="description">木之陽兮  卿云烂兮</h1>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>Categories</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>Search
+        </a>
+      </li>
+  </ul>
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="none"
+           placeholder="Searching..." spellcheck="false"
+           type="text" id="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="http://atomicer.cn/2019/05/17/etcd-raft%E4%B8%ADraft%E7%AE%97%E6%B3%95%E7%9A%84%E5%AE%9E%E7%8E%B0%E6%80%9D%E8%B7%AF%E5%8F%82%E8%80%83/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/mine.jpg">
+      <meta itemprop="name" content="木陽">
+      <meta itemprop="description" content="木之陽兮  卿云烂兮">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="木陽">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          Raft算法及etcd/raft的实现思路借鉴
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2019-05-17 16:27:43" itemprop="dateCreated datePublished" datetime="2019-05-17T16:27:43+00:00">2019-05-17</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h4 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL;DR"></a>TL;DR</h4><p>简单记录一下实践过程，并结合对etcd/raft源码的阅读，总结一下自己的缺陷以及etcd中可借鉴的思想。本文没有介绍raft算法如何实现，关于raft算法的介绍可直接参考以下文档：</p>
+<ol>
+<li><a href="1">《The Raft Consensus Algorithm》</a></li>
+<li><a href="2">《In Search of an Understandable Consensus Algorithm》</a></li>
+<li><a href="3">《Raft一致性算法论文：探索一种易理解的一致性算法 中文译文》</a></li>
+<li><a href="4">《CoreOS 实战：剖析 etcd》</a></li>
+<li><a href="5">《etcd/raft design》</a></li>
+</ol>
+<a id="more"></a>
+
+<p>无论是<code>Kafka</code>、<code>Zookeeper</code>还是<code>etcd</code>，这些分布式集群都绕不开“共识算法”，比如Zookeeper使用的<code>ZAB</code>、etcd使用的<code>raft</code>。其中<code>raft</code>算法的共识选举过程有趣好懂，就手痒痒地尝试实现了一下。</p>
+<h4 id="raft集群的简单实现"><a href="#raft集群的简单实现" class="headerlink" title="raft集群的简单实现"></a>raft集群的简单实现</h4><p>在raft一致性算法的相关，详细描述了如何实现选举以及日志同步，基于简单的实践的最低要求，我只简单地完成了以下两点，简单记录一下思路：</p>
+<h5 id="节点需要维持的几个重要属性"><a href="#节点需要维持的几个重要属性" class="headerlink" title="节点需要维持的几个重要属性"></a>节点需要维持的几个重要属性</h5><ul>
+<li>currentTerm 当前的任期号，从0开始递增 (Time is divided into terms, and each term begins with an election.)</li>
+<li>commitIndex  当前被调剂哦的最大日志条目的索引值</li>
+</ul>
+<h5 id="raft的选举过程"><a href="#raft的选举过程" class="headerlink" title="raft的选举过程"></a>raft的选举过程</h5><p>raft节点维持一个有限状态机，其中包含 <code>Follower</code>, <code>Candidate</code>, <code>Leader</code>三个状态，状态的转换如下所示：</p>
+<p><img src="http://cloud.atomicer.cn/blog-img/20190517/raft-state-machinepng" alt="状态迁移"></p>
+<ol>
+<li><p><code>Follower =&gt; Candidate</code>: 所有节点在初始时均设置为<code>Follower</code>，正常情况下，相应来自Leader的RPC请求或者候选人的投票请求；心跳超时的时候，感知到<code>Leader</code>已经迷失，且暂无候选人征求投票，那么将随机sleep一段时间（避免 split vote），然后将自身置为<code>Candidate</code></p>
+</li>
+<li><p><code>Candidate =&gt; Leader</code>: 节点状态为Candidate时，投票给自己，然后向所有的已知节点发送投票请求，统计投票结果：</p>
+<ol>
+<li>多个候选人竞选，有一个节点已超过半数的投票，则承认该节点的Leader地位，将currentTerm更新为该Leader的Term</li>
+<li>多个候选人进行，没有一个节点超过半数投票，本轮未选出leader，在(ElectionTimeout, 2*ElectionTimeout]的休眠时间之后进行下一轮</li>
+<li>当自己获得超过半数的选票时，则将状态从<code>Candidate</code>转为<code>Leader</code>，并将currentTerm + 1，正如算法描述中说的，每一轮（Term）从一次选举开始，到下一次选举结束。</li>
+</ol>
+</li>
+<li><p><code>Leader =&gt; Follower</code>: 当Leader节点无法正常发送心跳导致Follower心跳超时，在Leader节点恢复之后，除了Leader之外的其它节点可能已经重新选举：</p>
+<ol>
+<li>收到anotherLeader的心跳信息，比较两个leader的currentTerm，currentTerm小的将状态切换为Follower</li>
+<li>正常发送心跳信息时，接收到的Response.Term比currentTerm更大，将自己切换为Follower状态</li>
+</ol>
+</li>
+</ol>
+<blockquote>
+<p>Follower/Candidate/Leader 的往来消息中，一定包含 <code>Term</code>信息</p>
+</blockquote>
+<h5 id="日志复制"><a href="#日志复制" class="headerlink" title="日志复制"></a>日志复制</h5><p>raft中的日志(log entry)并不是系统Debug日志，而是序列化后的<code>command</code>，这些Command复制到各个节点后，通过序列化内容的解析出命令后，在各个节点上执行并返回操作结果从而实现<code>复制状态机</code></p>
+<p>日志复制的过程中，Leader检查并匹配每个Follower节点上当前的日志索引，移动游标到<code>lastCommit of followerX</code>的位置并开始复制日志条目到Follower节点中。</p>
+<h6 id="关于raft的复制状态机"><a href="#关于raft的复制状态机" class="headerlink" title="关于raft的复制状态机"></a>关于raft的复制状态机</h6><blockquote>
+<p>这一部分我没有尝试实现，以下是raft论文中的一些描述</p>
+</blockquote>
+<p>一旦选出了领导人，它就开始接收客户端的请求。每一个客户端请求都包含一条需要被复制状态机（replicated state machine）执行的命令。领导人把这条命令作为新的日志条目加入到它的日志中去，</p>
+<blockquote>
+<p>比如分布式存储服务集群，leader节点接收客户端的<code>curd</code>命令时，将其转成一条</p>
+</blockquote>
+<p>然后并行的向其他服务器发起 AppendEntries RPC ，要求其它服务器复制这个条目。当这个条目被安全的复制之后，</p>
+<blockquote>
+<p>超过半数的节点返回了复制成功的消息；必然存在少数节点可能因运行缓慢、宕机等原因超时的情况</p>
+</blockquote>
+<p>领导人会将这个条目应用到它的状态机中并且会向客户端返回执行结果。</p>
+<blockquote>
+<p>这一步就是复制状态机的操作，将输入复制到不同的容错节点后，执行每个节点的状态机，收集每个节点（状态机）的输出结果，比较多个节点，若存在n个结果相同且 <code>n&gt; counts(nodes) / 2</code>，则视该结果为正确结果，通过多节点保证输出结果的正确性，这是复制状态机的作用之一。</p>
+</blockquote>
+<p>如果追随者崩溃了或者运行缓慢或者是网络丢包了，领导人会无限的重试 AppendEntries RPC（甚至在它向客户端响应之后）直到所有的追随者最终存储了所有的日志条目。</p>
+<blockquote>
+<p>这里描述了存在部分情况下个别Follower节点失联的情况，如果已经有半数节点返回相同的结果，则先返回结果，Leader会在之后不断地尝试与Follower节点同步日志</p>
+</blockquote>
+<h5 id="RPC调用"><a href="#RPC调用" class="headerlink" title="RPC调用"></a>RPC调用</h5><p>raft共识算法中，维持心跳、日志复制、请求投票均由Leader/Candidate向所有的Follower节点发送，通过 <code>RequestVote</code>和 <code>AppendEntries</code>两个RPC方法实现。</p>
+<p>关于RPC调用的实现，我试过两种方式：</p>
+<ol>
+<li><code>netty</code> + <code>avro</code>简单地实现RPC调用</li>
+<li>直接使用<code>gRPC</code></li>
+</ol>
+<p>分布式集群中，高性能、高可用的网络框架和序列化框架是必然的选择，<code>netty</code> + <code>avor</code> 的实践就是在这方面小试牛刀，不过显而易见的是，直接使用netty框架需要关注处理管道、序列化和反序列化的过程等细节。后来使用<code>gRPC</code>重写一遍，是为了体会一下使用框架提供的全套解决方案的便利性，etcd/raft使用的也是gRPC。</p>
+<p>这里一定要记录我陷入的一个误区，netty本是异步网络框架，为了统计投票，我转了一个大弯实现了netty同步获取返回结果的方法。后来发现etcd在实现raft的过程中，它将所有的消息放到<code>message box</code>中，异步地消费消息队列，完全不需要复杂的同步控制逻辑。</p>
+<h4 id="etcd-raft中的实现细节"><a href="#etcd-raft中的实现细节" class="headerlink" title="etcd/raft中的实现细节"></a>etcd/raft中的实现细节</h4><h5 id="状态迁移"><a href="#状态迁移" class="headerlink" title="状态迁移"></a>状态迁移</h5><blockquote>
+<p>Raft as a state machine. The state machine takes a <code>Message</code> as input. A message can either be a local timer update or a network message sent from a remote peer. The state machine’s output is a 3-tuple <code>{[]Messages, []LogEntries, NextState}</code> consisting of an array of <code>Messages</code>, <code>log entries</code>, and <code>Raft state changes</code>. For state machines with the same state, the same state machine input should always generate the same state machine output.</p>
+</blockquote>
+<p>etcd/raft实现了一个状态机，输入 <code>Message</code>，输出 <code>{[]Messages, []LogEntries, NextState}</code>，并且确保输出函数的幂等性。其中状态机和输出函数的对应关系如下：</p>
+<ol>
+<li><code>Follower</code> &lt;-&gt; <code>stepFollower(r *raft, m pb.Message)</code></li>
+<li><code>Candidate</code> &lt;-&gt; <code>stepCandidate(r *raft, m pb.Message)</code></li>
+<li><code>Leader</code> &lt;-&gt; <code>stepLeader(r *raft, m pb.Message)</code></li>
+</ol>
+<blockquote>
+<p>本来对 “the same state machine input should always generate the same state machine output” 这句话存疑，后来发现raft状态机的输出函数被抽出（不属于raft或者node对象），消除了疑惑</p>
+</blockquote>
+<h5 id="Raft状态更新、处理以及驱动方式"><a href="#Raft状态更新、处理以及驱动方式" class="headerlink" title="Raft状态更新、处理以及驱动方式"></a>Raft状态更新、处理以及驱动方式</h5><h6 id="选举-心跳-超时"><a href="#选举-心跳-超时" class="headerlink" title="选举 心跳 超时"></a>选举 心跳 超时</h6><p>关于选举超时、心跳超时等一系列与时序相关的同步处理，第一反应应该就是用<code>timer</code>，etcd/raft的实现类似，使用一个循环等待通道中的消息，在一定的周期内触发raft状态更新、消息发送等操作，不同的是它将“regular intervals”抽象为<code>Tick</code>，<code>Tick</code>的更新方式以更大自由度的方式留给用户自己实现。</p>
+<p><code>Tick</code>可以理解为撞针，每次产生撞击的动作：</p>
+<ol>
+<li><code>electionElapsed/heartbeatElapsed</code>递增</li>
+<li>Leader发送心跳</li>
+<li>Follower/Candidate/Leader根据超时时间检查状态并产生相应动作</li>
+</ol>
+<blockquote>
+<p>etcd/raft中没有指定何时产生Tick动作，raftexample中给出的例子是由<code>time.Ticker</code>驱动(golang中的<code>time.NewTicker</code>可以取一个定时发送通知的channel，也是一个定时器)</p>
+</blockquote>
+<h6 id="核心实现"><a href="#核心实现" class="headerlink" title="核心实现"></a>核心实现</h6><p>核心逻辑在<code>raft/node.go</code>的 <code>run</code>函数中：</p>
+<ol>
+<li>每个raft node初始化完成时，会有相应的通道接提案、成员变更等消息，同时启动协程轮询检查当前的超时、状态、提案等信息，并将新生成的待发送消息放到Ready通道中</li>
+<li>每次Tick事件完成时，产生的新消息（比如需要发送心跳、同步日志等）打包放到node.Ready()通道中，用户可以从此处获取到Ready实体，其中包含需要发送的Messages等内容</li>
+<li>用户按照etcd/raft文档中说明的方式，处理Ready实体中所有的内容，等待下个周期的<code>Tick</code>触发状态的更新即可。</li>
+</ol>
+<blockquote>
+<ol>
+<li>Write Entries, HardState and Snapshot to persistent storage in order, i.e. Entries first, then HardState and Snapshot if they are not empty. If persistent storage supports atomic writes then all of them can be written together. Note that when writing an Entry with Index i, any previously-persisted entries with Index &gt;= i must be discarded.</li>
+<li>Send all Messages to the nodes named in the To field. It is important that no messages be sent until the latest HardState has been persisted to disk, and all Entries written by any previous Ready batch (Messages may be sent while entries from the same batch are being persisted). To reduce the I/O latency, an optimization can be applied to make leader write to disk in parallel with its followers (as explained at section 10.2.1 in Raft thesis). If any Message has type MsgSnap, call Node.ReportSnapshot() after it has been sent (these messages may be large). Note: Marshalling messages is not thread-safe; it is important to make sure that no new entries are persisted while marshalling. The easiest way to achieve this is to serialise the messages directly inside the main raft loop.</li>
+<li>Apply Snapshot (if any) and CommittedEntries to the state machine. If any committed Entry has Type EntryConfChange, call Node.ApplyConfChange() to apply it to the node. The configuration change may be cancelled at this point by setting the NodeID field to zero before calling ApplyConfChange (but ApplyConfChange must be called one way or the other, and the decision to cancel must be based solely on the state machine and not external information such as the observed health of the node).</li>
+<li>Call Node.Advance() to signal readiness for the next batch of updates. This may be done at any time after step 1, although all updates must be processed in the order they were returned by Ready.</li>
+</ol>
+</blockquote>
+<p>通过raftexample示例服务启动的代码可窥一斑:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">go</span> <span class="function"><span class="keyword">func</span><span class="params">()</span></span> &#123;</span><br><span class="line">    <span class="comment">// 提案、配置处理协程</span></span><br><span class="line">    confChangeCount := <span class="keyword">uint64</span>(<span class="number">0</span>)</span><br><span class="line"></span><br><span class="line">		<span class="keyword">for</span> rc.proposeC != <span class="literal">nil</span> &amp;&amp; rc.confChangeC != <span class="literal">nil</span> &#123;</span><br><span class="line">			<span class="keyword">select</span> &#123;</span><br><span class="line">			<span class="keyword">case</span> prop, ok := &lt;-rc.proposeC:</span><br><span class="line">				<span class="keyword">if</span> !ok &#123;</span><br><span class="line">					rc.proposeC = <span class="literal">nil</span></span><br><span class="line">				&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">					<span class="comment">// blocks until accepted by raft state machine</span></span><br><span class="line">					rc.node.Propose(context.TODO(), []<span class="keyword">byte</span>(prop))</span><br><span class="line">				&#125;</span><br><span class="line"></span><br><span class="line">			<span class="keyword">case</span> cc, ok := &lt;-rc.confChangeC:</span><br><span class="line">				<span class="keyword">if</span> !ok &#123;</span><br><span class="line">					rc.confChangeC = <span class="literal">nil</span></span><br><span class="line">				&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">					confChangeCount++</span><br><span class="line">					cc.ID = confChangeCount</span><br><span class="line">					rc.node.ProposeConfChange(context.TODO(), cc)</span><br><span class="line">				&#125;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="comment">// client closed channel; shutdown raft if not already</span></span><br><span class="line">		<span class="built_in">close</span>(rc.stopc)</span><br><span class="line">	&#125;()</span><br><span class="line"></span><br><span class="line">	<span class="comment">// event loop on raft state machine updates</span></span><br><span class="line">	<span class="keyword">for</span> &#123;</span><br><span class="line">		<span class="keyword">select</span> &#123;</span><br><span class="line">		<span class="keyword">case</span> &lt;-ticker.C:</span><br><span class="line">			rc.node.Tick()</span><br><span class="line"></span><br><span class="line">		<span class="comment">// store raft entries to wal, then publish over commit channel</span></span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 从Ready通道中获取内容</span></span><br><span class="line">        <span class="keyword">case</span> rd := &lt;-rc.node.Ready():</span><br><span class="line">            <span class="comment">// 持久化HardState、LogEntities （HardState包含Term、Vote、Commit等信息）</span></span><br><span class="line">            rc.wal.Save(rd.HardState, rd.Entries)</span><br><span class="line">            <span class="comment">// 处理Snapshot</span></span><br><span class="line">			<span class="keyword">if</span> !raft.IsEmptySnap(rd.Snapshot) &#123;</span><br><span class="line">				rc.saveSnap(rd.Snapshot)</span><br><span class="line">				rc.raftStorage.ApplySnapshot(rd.Snapshot)</span><br><span class="line">				rc.publishSnapshot(rd.Snapshot)</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 广播发送日志到所有节点（提交。提交成功的原则：多数节点确认提交）</span></span><br><span class="line">			rc.raftStorage.Append(rd.Entries)</span><br><span class="line">            rc.transport.Send(rd.Messages)</span><br><span class="line">            <span class="comment">// 应用状态机到所有的节点 (lastApply, committedIndex]: 通过commitC通道告诉其它处理协程</span></span><br><span class="line">			<span class="keyword">if</span> ok := rc.publishEntries(rc.entriesToApply(rd.CommittedEntries)); !ok &#123;</span><br><span class="line">				rc.stop()</span><br><span class="line">				<span class="keyword">return</span></span><br><span class="line">            &#125;</span><br><span class="line">            <span class="comment">// 尝试创建snapshot</span></span><br><span class="line">            rc.maybeTriggerSnapshot()</span><br><span class="line">            <span class="comment">// 提示raft (rd) 处理完成完成</span></span><br><span class="line">			rc.node.Advance()</span><br><span class="line"></span><br><span class="line">		<span class="keyword">case</span> err := &lt;-rc.transport.ErrorC:</span><br><span class="line">			rc.writeError(err)</span><br><span class="line">			<span class="keyword">return</span></span><br><span class="line"></span><br><span class="line">		<span class="keyword">case</span> &lt;-rc.stopc:</span><br><span class="line">			rc.stop()</span><br><span class="line">			<span class="keyword">return</span></span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
+
+<h5 id="etcd-raft的日志同步"><a href="#etcd-raft的日志同步" class="headerlink" title="etcd/raft的日志同步"></a>etcd/raft的日志同步</h5><p>etcd/raft中用了<code>Progress</code>来控制leader和follower之间的日志同步，progress 表示的是在Leader视角下的Follower的日志复制的进度，其中包含了 <code>probe</code> <code>snapshot</code> <code>replicate</code>三种状态，以下是etcd的desin文稿中的描述：</p>
+<figure class="highlight gherkin"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">                            +--------------------------------------------------------+          </span><br><span class="line">                            |<span class="string">                  send snapshot                         </span>|<span class="string">          </span></span><br><span class="line"><span class="string">                            </span>|<span class="string">                                                        </span>|<span class="string">          </span></span><br><span class="line"><span class="string">                  +---------+----------+                                  +----------v---------+</span></span><br><span class="line"><span class="string">              +---&gt;       probe        </span>|<span class="string">                                  </span>|<span class="string">      snapshot      </span>|</span><br><span class="line">              |<span class="string">   </span>|<span class="string">  max inflight = 1  &lt;----------------------------------+  max inflight = 0  </span>|</span><br><span class="line">              |<span class="string">   +---------+----------+                                  +--------------------+</span></span><br><span class="line"><span class="string">              </span>|<span class="string">             </span>|<span class="string">            1. snapshot success                                    </span></span><br><span class="line"><span class="string">              </span>|<span class="string">             </span>|<span class="string">               (next=snapshot.index + 1)                           </span></span><br><span class="line"><span class="string">              </span>|<span class="string">             </span>|<span class="string">            2. snapshot failure                                    </span></span><br><span class="line"><span class="string">              </span>|<span class="string">             </span>|<span class="string">               (no change)                                         </span></span><br><span class="line"><span class="string">              </span>|<span class="string">             </span>|<span class="string">            3. receives msgAppResp(rej=false&amp;&amp;index&gt;lastsnap.index)</span></span><br><span class="line"><span class="string">              </span>|<span class="string">             </span>|<span class="string">               (match=m.index,next=match+1)                        </span></span><br><span class="line"><span class="string">receives msgAppResp(rej=true)                                                                   </span></span><br><span class="line"><span class="string">(next=match+1)</span>|<span class="string">             </span>|<span class="string">                                                                   </span></span><br><span class="line"><span class="string">              </span>|<span class="string">             </span>|<span class="string">                                                                   </span></span><br><span class="line"><span class="string">              </span>|<span class="string">             </span>|<span class="string">                                                                   </span></span><br><span class="line"><span class="string">              </span>|<span class="string">             </span>|<span class="string">   receives msgAppResp(rej=false&amp;&amp;index&gt;match)                     </span></span><br><span class="line"><span class="string">              </span>|<span class="string">             </span>|<span class="string">   (match=m.index,next=match+1)                                    </span></span><br><span class="line"><span class="string">              </span>|<span class="string">             </span>|<span class="string">                                                                   </span></span><br><span class="line"><span class="string">              </span>|<span class="string">             </span>|<span class="string">                                                                   </span></span><br><span class="line"><span class="string">              </span>|<span class="string">             </span>|<span class="string">                                                                   </span></span><br><span class="line"><span class="string">              </span>|<span class="string">   +---------v----------+                                                        </span></span><br><span class="line"><span class="string">              </span>|<span class="string">   </span>|<span class="string">     replicate      </span>|<span class="string">                                                        </span></span><br><span class="line"><span class="string">              +---+  max inflight = n  </span>|<span class="string">                                                        </span></span><br><span class="line"><span class="string">                  +--------------------+</span></span><br></pre></td></tr></table></figure>
+
+<h6 id="Probe状态"><a href="#Probe状态" class="headerlink" title="Probe状态"></a>Probe状态</h6><blockquote>
+<p><code>max inflight = 1</code></p>
+</blockquote>
+<p>在这个状态中，leader会在每个心跳周期内至多发送一个复制信息(<code>replication message</code>) 到progress对应的follower，此时leader发送的速度是缓慢的，并同时尝试找出follower真实匹配的index（当收到的回复<code>msgAppResp</code>是reject类型时，会触发下一交发送操作，可见raft论文中对index匹配的描述）</p>
+<h6 id="Replicate状态"><a href="#Replicate状态" class="headerlink" title="Replicate状态"></a>Replicate状态</h6><blockquote>
+<p><code>max inflight = n</code></p>
+</blockquote>
+<p>leader会发送大量的日志条目到follower中，这个过程etcd-raft是做了优化的</p>
+<h6 id="Snapshot状态"><a href="#Snapshot状态" class="headerlink" title="Snapshot状态"></a>Snapshot状态</h6><blockquote>
+<p><code>max inflight = 0</code></p>
+</blockquote>
+<p>在这个状态中，leader不会向follower中发送任何日志条目</p>
+<h6 id="状态切换"><a href="#状态切换" class="headerlink" title="状态切换"></a>状态切换</h6><p>progerss允许的状态切换： <code>probe  &lt;-&gt; replicate &lt;-&gt; snapshot</code></p>
+<ol>
+<li>init: probe</li>
+</ol>
+<p>每一任新的leader产生时， 会针对所有的follower初始化一个progress，并将progerss的状态初始化为<code>Probe</code>，由此leader会尝试慢慢地试探follower中可匹配的index。</p>
+<blockquote>
+<p>etcd/raft/design.md: A newly elected leader sets the progresses of all the followers to probe state with match = 0 and next = last index <a href="5">etcd/raft design</a></p>
+</blockquote>
+<ol start="2">
+<li>probe &lt;-&gt; replicate</li>
+</ol>
+<p>当progress的状态为probe时，leader在试探性地发送<code>replication message</code>, 在开始时 match 为 0, next 为最新的日志index + 1，从此处开始试探，直到找到匹配的index为止;</p>
+<p>当progress的状态为replicate时，leader会按nextIndex发送日志条目到follower，但可能由于网络通信、机器故障等原因，造成node之间同步失败，follower返回reject信息，此时重新回到probe状态（The progress will fall back to probe when the follower replies a rejection msgAppResp or the link layer reports the follower is unreachable）</p>
+<blockquote>
+<p>The leader maintains a nextIndex for each follower, which is the index of the next log entry the leader will send to that follower. When a leader first comes to power, it initializes all nextIndex values to the index just after the last one in its log (11 in Figure 7). If a follower’s log is inconsistent with the leader’s, the AppendEntries consistency check will fail in the next AppendEntries RPC. After a rejection, the leader decrements nextIndex and retries the AppendEntries RPC. Eventually nextIndex will reach a point where the leader and follower logs match. When this happens, AppendEntries will succeed, which removes any conflicting entries in the follower’s log and appends entries from the leader’s log (if any). Once AppendEntries succeeds, the follower’s log is consistent with the leader’s, and it will remain that way for the rest of the term. <a href="2">raft paper</a></p>
+</blockquote>
+<ol start="3">
+<li>probe &lt;-&gt; snapshot</li>
+</ol>
+<p>当follower的index落后当前太多条目或需要创建一个snapshot时, leader会发送一个msgSnap的消息，然后等待follower返回任何成功、失败、中止操作等response后重新转为<code>probe</code>状态，在这个过程中leader不会向follower发送任何日志条目</p>
+<h4 id="回顾"><a href="#回顾" class="headerlink" title="回顾"></a>回顾</h4><p>raft有很多详细的文献资料可以参考，而且大多不会晦涩难懂，在初期理解raft集群的工作原理非常有帮助。不过理解原理是一回事，动手实践又是另一回事，这个过程中不乏因为理解错误而做出有问题的实现（表现在coding的时候越来越疑惑，又回过头去翻raft的论文）。有许多的细节需要去考究，比如I/O的实现、持久化存储与日志压缩、超时机制等。参考etcd/raft的实现方式，在尝试理解别人的思考方式的过程中，可以从别的角度找到一些答案，以及许多东西可以借鉴，比如我都不会想到定时器可以抽象为<code>Tick</code>（可测试性和可拓展性远高于写死的Timer）</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:  </strong>木陽
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link: </strong>
+    <a href="http://atomicer.cn/2019/05/17/etcd-raft%E4%B8%ADraft%E7%AE%97%E6%B3%95%E7%9A%84%E5%AE%9E%E7%8E%B0%E6%80%9D%E8%B7%AF%E5%8F%82%E8%80%83/" title="Raft算法及etcd&#x2F;raft的实现思路借鉴">http://atomicer.cn/2019/05/17/etcd-raft中raft算法的实现思路参考/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" rel="noopener" target="_blank"><i class="fa fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2019/05/14/%E5%A4%A7%E5%B0%8F%E7%AB%AF%E4%B8%8E%E5%BA%8F%E5%88%97%E5%8C%96/" rel="prev" title="大小端与序列化">
+      <i class="fa fa-chevron-left"></i> 大小端与序列化
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2019/06/05/%E4%BD%BF%E7%94%A8Jinja%E5%8A%A8%E6%80%81%E6%B8%B2%E6%9F%93Yaml%E6%96%87%E4%BB%B6%E7%9A%84%E6%96%B9%E6%A1%88/" rel="next" title="动态渲染Yaml文件（使用 模板映射 + Jinja2 方案）">
+      动态渲染Yaml文件（使用 模板映射 + Jinja2 方案） <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#TL-DR"><span class="nav-number">1.</span> <span class="nav-text">TL;DR</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#raft集群的简单实现"><span class="nav-number">2.</span> <span class="nav-text">raft集群的简单实现</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#节点需要维持的几个重要属性"><span class="nav-number">2.1.</span> <span class="nav-text">节点需要维持的几个重要属性</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#raft的选举过程"><span class="nav-number">2.2.</span> <span class="nav-text">raft的选举过程</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#日志复制"><span class="nav-number">2.3.</span> <span class="nav-text">日志复制</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#关于raft的复制状态机"><span class="nav-number">2.3.1.</span> <span class="nav-text">关于raft的复制状态机</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#RPC调用"><span class="nav-number">2.4.</span> <span class="nav-text">RPC调用</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#etcd-raft中的实现细节"><span class="nav-number">3.</span> <span class="nav-text">etcd&#x2F;raft中的实现细节</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#状态迁移"><span class="nav-number">3.1.</span> <span class="nav-text">状态迁移</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#Raft状态更新、处理以及驱动方式"><span class="nav-number">3.2.</span> <span class="nav-text">Raft状态更新、处理以及驱动方式</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#选举-心跳-超时"><span class="nav-number">3.2.1.</span> <span class="nav-text">选举 心跳 超时</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#核心实现"><span class="nav-number">3.2.2.</span> <span class="nav-text">核心实现</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#etcd-raft的日志同步"><span class="nav-number">3.3.</span> <span class="nav-text">etcd&#x2F;raft的日志同步</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#Probe状态"><span class="nav-number">3.3.1.</span> <span class="nav-text">Probe状态</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#Replicate状态"><span class="nav-number">3.3.2.</span> <span class="nav-text">Replicate状态</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#Snapshot状态"><span class="nav-number">3.3.3.</span> <span class="nav-text">Snapshot状态</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#状态切换"><span class="nav-number">3.3.4.</span> <span class="nav-text">状态切换</span></a></li></ol></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#回顾"><span class="nav-number">4.</span> <span class="nav-text">回顾</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="木陽"
+      src="/mine.jpg">
+  <p class="site-author-name" itemprop="name">木陽</p>
+  <div class="site-description" itemprop="description">木之陽兮  卿云烂兮</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">32</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">16</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">50</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/raomuyang" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;raomuyang" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="http://mail.qq.com/cgi-bin/qm_share?t=qm_mailme&email=RzUmKCoiKSApJikHISg-KiYuK2kkKCo" title="E-Mail → http:&#x2F;&#x2F;mail.qq.com&#x2F;cgi-bin&#x2F;qm_share?t&#x3D;qm_mailme&amp;email&#x3D;RzUmKCoiKSApJikHISg-KiYuK2kkKCo" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="/atom.xml" title="RSS → &#x2F;atom.xml"><i class="fa fa-fw fa-rss"></i>RSS</a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+  <div class="beian"><a href="http://www.beian.miit.gov.cn/" rel="noopener" target="_blank">赣ICP备16004083号 </a>
+  </div>
+
+<div class="copyright">
+  
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">木陽  使用<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">(CC) BY-NC-SA</a> 许可发布</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+  <script>
+    (function(){
+      var bp = document.createElement('script');
+      var curProtocol = window.location.protocol.split(':')[0];
+      bp.src = (curProtocol === 'https') ? 'https://zz.bdstatic.com/linksubmit/push.js' : 'http://push.zhanzhang.baidu.com/push.js';
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(bp, s);
+    })();
+  </script>
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

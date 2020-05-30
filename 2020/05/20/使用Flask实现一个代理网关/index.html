@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon.png">
+  <link rel="mask-icon" href="/favicon.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://atomicer.cn').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="背景说明API网关的作用不言而喻，在微服务架构下多个微服务接口需要一个网关来协调，从而实现拦截器、代理转发、流量控制、负载均衡、熔断等机制；有许多成熟的第三方网关中间件，比如Zuul, Kong等，如果没有一个可配置化的方式去管理路由，则每新增一个接口就要到API服务中增加相应的代码，从而达到代理转发请求到后端服务的目的，导致开发人员要分别维护微服务和API网关两套代码，繁琐而低效。 当然，在不想">
+<meta property="og:type" content="article">
+<meta property="og:title" content="使用Flask手写一个代理网关">
+<meta property="og:url" content="http://atomicer.cn/2020/05/20/%E4%BD%BF%E7%94%A8Flask%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E4%BB%A3%E7%90%86%E7%BD%91%E5%85%B3/index.html">
+<meta property="og:site_name" content="木陽">
+<meta property="og:description" content="背景说明API网关的作用不言而喻，在微服务架构下多个微服务接口需要一个网关来协调，从而实现拦截器、代理转发、流量控制、负载均衡、熔断等机制；有许多成熟的第三方网关中间件，比如Zuul, Kong等，如果没有一个可配置化的方式去管理路由，则每新增一个接口就要到API服务中增加相应的代码，从而达到代理转发请求到后端服务的目的，导致开发人员要分别维护微服务和API网关两套代码，繁琐而低效。 当然，在不想">
+<meta property="article:published_time" content="2020-05-20T19:01:25.000Z">
+<meta property="article:modified_time" content="2020-05-30T09:25:26.300Z">
+<meta property="article:author" content="木陽">
+<meta property="article:tag" content="Python">
+<meta property="article:tag" content="Flask">
+<meta property="article:tag" content="Gateway">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://atomicer.cn/2020/05/20/%E4%BD%BF%E7%94%A8Flask%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E4%BB%A3%E7%90%86%E7%BD%91%E5%85%B3/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>使用Flask手写一个代理网关 | 木陽</title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-82755477-1"></script>
+    <script>
+      if (CONFIG.hostname === location.hostname) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-82755477-1');
+      }
+    </script>
+
+
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?28428a78c9ad21d09428f89378d9c50b";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">木陽</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <h1 class="site-subtitle" itemprop="description">木之陽兮  卿云烂兮</h1>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>Categories</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>Search
+        </a>
+      </li>
+  </ul>
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="none"
+           placeholder="Searching..." spellcheck="false"
+           type="text" id="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="http://atomicer.cn/2020/05/20/%E4%BD%BF%E7%94%A8Flask%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E4%BB%A3%E7%90%86%E7%BD%91%E5%85%B3/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/mine.jpg">
+      <meta itemprop="name" content="木陽">
+      <meta itemprop="description" content="木之陽兮  卿云烂兮">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="木陽">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          使用Flask手写一个代理网关
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2020-05-20 19:01:25" itemprop="dateCreated datePublished" datetime="2020-05-20T19:01:25+00:00">2020-05-20</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Python/" itemprop="url" rel="index">
+                    <span itemprop="name">Python</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="背景说明"><a href="#背景说明" class="headerlink" title="背景说明"></a>背景说明</h2><p>API网关的作用不言而喻，在微服务架构下多个微服务接口需要一个网关来协调，从而实现拦截器、代理转发、流量控制、负载均衡、熔断等机制；有许多成熟的第三方网关中间件，比如<a href="https://github.com/Netflix/zuul" target="_blank" rel="noopener">Zuul</a>, <a href="https://docs.konghq.com/2.0.x" target="_blank" rel="noopener">Kong</a>等，如果没有一个可配置化的方式去管理路由，则每新增一个接口就要到API服务中增加相应的代码，从而达到代理转发请求到后端服务的目的，导致开发人员要分别维护微服务和API网关两套代码，繁琐而低效。</p>
+<p>当然，在不想引入第三方网关组件的情况下，我们还是可以自己来手写一个简单的网关组件，从而实现配置化的路由管理功能，大致思路如下：</p>
+<ol>
+<li>路由配置：通过配置文件管理微服务的路由</li>
+<li>实现代理：用户请求 -&gt; 输入拦截 -&gt; 服务发现 -&gt; 向上游转发请求 -&gt; 输出拦截 -&gt; 返回信息</li>
+<li>监听路由：通过<code>Flask.route</code>函数注册路由，绑定每个路由的代理</li>
+</ol>
+<a id="more"></a>
+
+<p>这个过程大致如下所示：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">graph TD</span><br><span class="line">In(Incoming path)</span><br><span class="line">--&gt;|Request| Gateway[API Gateway]</span><br><span class="line">Gateway --&gt; |parameters| InPipe&#123;Inbound pipes&#125;</span><br><span class="line">InPipe --&gt;|通过| UP(Upstream Service Path)</span><br><span class="line">InPipe --&gt;|不通过| E(异常)</span><br><span class="line">UP --&gt; |FinalRequest| US[Upstream service]</span><br><span class="line">US --&gt; |Response| OutPipe&#123;Outbound pipes&#125;</span><br><span class="line">OutPipe --&gt;|不通过| E(异常)</span><br><span class="line">OutPipe --&gt;|通过| FinalResponse(Final Response)</span><br></pre></td></tr></table></figure>
+
+<h2 id="设计与配置声明"><a href="#设计与配置声明" class="headerlink" title="设计与配置声明"></a>设计与配置声明</h2><p>为了明确从API网关服务到上游微服务的代理路由，我们需要声明一个路由，这个路由中需要明确以下信息：</p>
+<ol>
+<li>API Gateway中开放的接口 (incoming path)</li>
+<li>上游服务的接口 (upstream path)</li>
+<li>支持的HTTP请求方法列表</li>
+<li>上游服务名称（service name）</li>
+</ol>
+<p>从这个四元组，我们就可以确定一条路由（从哪来，到哪去）</p>
+<p>另外，输入输出的一系列拦截器可以抽象为inbound/outbound管道：</p>
+<ul>
+<li>pipelines<ul>
+<li>inbound</li>
+<li>outbound</li>
+</ul>
+</li>
+</ul>
+<p>那么我们就可以明确所需的配置项如下:</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="attr">routes:</span></span><br><span class="line"></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">&#123;route_name&#125;</span>  <span class="comment"># 路由名称</span></span><br><span class="line">      <span class="attr">service_name:</span> <span class="string">&#123;service_name&#125;</span> <span class="comment"># 后端服务名称</span></span><br><span class="line">      <span class="attr">methods:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="string">&#123;http</span> <span class="string">method&#125;</span>  <span class="comment"># 路由方法：GET|PUT|POST|DELETE</span></span><br><span class="line">      <span class="attr">path:</span>  <span class="string">/incoming/path/&lt;param_1&gt;/&lt;param_2&gt;/</span> <span class="comment"># 客户端请求的资源路径（incoming）</span></span><br><span class="line">      <span class="attr">upstream_path:</span>  <span class="string">/upstream/path/&lt;param_1&gt;/&lt;param_2&gt;/</span> <span class="comment"># 上游服务器的资源路径</span></span><br><span class="line">      <span class="attr">pipelines:</span></span><br><span class="line">        <span class="attr">inbound:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">inbound</span> <span class="string">pipe</span> <span class="string">name</span></span><br><span class="line">              <span class="attr">properties:</span> <span class="string">&#123;&#125;</span>  <span class="comment"># inbound pipe properties</span></span><br><span class="line">        <span class="attr">outbound:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">outbound</span> <span class="string">pipe</span> <span class="string">name</span></span><br><span class="line">              <span class="attr">properties:</span> <span class="string">&#123;&#125;</span>  <span class="comment"># outbound pipe properties</span></span><br></pre></td></tr></table></figure>
+
+<p>配置项说明：</p>
+<ul>
+<li>name: (string) 路由名称</li>
+<li>service_name: (string) 内部微服务名称（如 <code>resolver</code> <code>data_manager</code> 等，只要内部去实现通过服务名获取服务地址即可）</li>
+<li>methods: (array) 路由请求方法列表, 如 <code>[&#39;GET&#39;, &#39;PUT&#39;]</code></li>
+<li>path: (string) 匹配的路径，使用<code>flask</code>的占位符 <code>&lt;parameter_name&gt;</code> 声明路径参数（为了简化逻辑，服务名称固定使用 <code>&lt;service_name&gt;</code> 占位符）</li>
+<li>upstream_path: (string) 转发到上游服务的路径，与<code>path</code>使用同样风格的参数占位符</li>
+<li>pipelines: (object) 请求处理管道，包含请求前处理(inbound)各请求后处理(outbound)， 支持自定义数据处理器和处理顺序，从而实现自定义的拦截、数据转换等一系列操作<ul>
+<li>inbound: (array) 代理发送请求前，会使用<code>inbound</code>中定义的handlers处理用户请求中的参数，比如对headers中的auth字段验证，对用户请求的url做鉴权处理</li>
+<li>outbound: (array) 代理获得上游服务的response之后，使用<code>outbound</code>中的定义的handlers处理返回值，比如转换 status code</li>
+</ul>
+</li>
+</ul>
+<h2 id="代码实现"><a href="#代码实现" class="headerlink" title="代码实现"></a>代码实现</h2><h3 id="1-创建一个Route类用于载入路由配置"><a href="#1-创建一个Route类用于载入路由配置" class="headerlink" title="1. 创建一个Route类用于载入路由配置"></a>1. 创建一个<code>Route</code>类用于载入路由配置</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Route</span><span class="params">(object)</span>:</span></span><br><span class="line">    <span class="string">"""</span></span><br><span class="line"><span class="string">    路由实体类，对应一项路由配置</span></span><br><span class="line"><span class="string">    TODO replace_placeholder 函数，替换字符串中的占位符</span></span><br><span class="line"><span class="string">    TODO extract_placeholders 函数，获取字符串中的点位符</span></span><br><span class="line"><span class="string">    TODO get_pipe 函数，通过handler name获取对应的PipeHandler类 </span></span><br><span class="line"><span class="string">    """</span></span><br><span class="line"></span><br><span class="line">    SERVICE_NAME_PLACEHOLDER = <span class="string">'service_name'</span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self, name, service_name, methods, path, upstream_path, pipelines=None)</span>:</span></span><br><span class="line">        <span class="string">"""</span></span><br><span class="line"><span class="string">        :param str name: (string) 路由名称</span></span><br><span class="line"><span class="string">        :param str service_name: (string) 内部微服务名称（如 `resolver` `data_manager` 等）</span></span><br><span class="line"><span class="string">        :param list methods: (array) 支持的请求方法列表, 如 `['GET', 'PUT']`</span></span><br><span class="line"><span class="string">        :param str path: (string) 匹配的路径，使用`flask`的占位符 `&lt;parameter_name&gt;` 声明路径参数，服务名称固定使用 `&lt;service_name&gt;` 占位符</span></span><br><span class="line"><span class="string">        :param str upstream_path: (string) 转发到上游服务的路径，与`path`使用同样风格的参数占位符</span></span><br><span class="line"><span class="string">        :param dict pipelines: (object) 数据处理管道</span></span><br><span class="line"><span class="string">        """</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> <span class="keyword">not</span> isinstance(methods, (list, set, tuple)):</span><br><span class="line">            <span class="keyword">raise</span> ValueError(<span class="string">"methods must be an iterable list"</span>)</span><br><span class="line">        pipelines = pipelines <span class="keyword">or</span> &#123;&#125;</span><br><span class="line"></span><br><span class="line">        self.name = name</span><br><span class="line">        self.service_name = service_name</span><br><span class="line">        self.methods = list(set(methods))</span><br><span class="line">        <span class="comment"># 使用 replace_placeholder 将 &lt;service_name&gt; 替换为路由配置中的后端服务</span></span><br><span class="line">        self.path = replace_placeholder(path, self.SERVICE_NAME_PLACEHOLDER, service_name)</span><br><span class="line">        self.upstream_path = replace_placeholder(upstream_path, self.SERVICE_NAME_PLACEHOLDER, service_name)</span><br><span class="line">        self.pipelines = &#123;</span><br><span class="line">            <span class="string">"inbound"</span>: map(self.init_pipe_handler, pipelines.get(<span class="string">'inbound'</span>) <span class="keyword">or</span> []),</span><br><span class="line">            <span class="string">"outbound"</span>: map(self.init_pipe_handler, pipelines.get(<span class="string">'outbound'</span>) <span class="keyword">or</span> []),</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment"># 导出上游服务资源所需的参数（占位符）</span></span><br><span class="line">        self.upstream_params = extract_placeholders(self.upstream_path)</span><br><span class="line"></span><br><span class="line"><span class="meta">    @staticmethod</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">init_pipe_handler</span><span class="params">(pipe_conf)</span>:</span></span><br><span class="line">        <span class="keyword">try</span>:</span><br><span class="line">            name = pipe_conf[<span class="string">'name'</span>]</span><br><span class="line">            properties = pipe_conf.get(<span class="string">'properties'</span>, &#123;&#125;)</span><br><span class="line">            klass = get_pipe(name)</span><br><span class="line">            <span class="keyword">return</span> klass(**properties)</span><br><span class="line">        <span class="keyword">except</span> Exception <span class="keyword">as</span> e:</span><br><span class="line">            <span class="keyword">raise</span> ValueError(<span class="string">"illegal pipe config &#123;&#125;: &#123;&#125;"</span>.format(pipe_conf, e))</span><br><span class="line"></span><br><span class="line"><span class="meta">    @property</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">inbound_pipes</span><span class="params">(self)</span>:</span></span><br><span class="line">        <span class="keyword">return</span> self.pipelines.get(<span class="string">"inbound"</span>) <span class="keyword">or</span> []</span><br><span class="line"></span><br><span class="line"><span class="meta">    @property</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">outbound_pipes</span><span class="params">(self)</span>:</span></span><br><span class="line">        <span class="keyword">return</span> self.pipelines.get(<span class="string">"outbound"</span>) <span class="keyword">or</span> []</span><br><span class="line"></span><br><span class="line"><span class="meta">    @staticmethod</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">load</span><span class="params">(routes)</span>:</span></span><br><span class="line">        <span class="string">"""</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">        :param list of dict routes: 路由配置列表</span></span><br><span class="line"><span class="string">        :rtype: list of Route</span></span><br><span class="line"><span class="string">        """</span></span><br><span class="line">        <span class="keyword">return</span> map(<span class="keyword">lambda</span> kv: Route(**kv), routes)</span><br></pre></td></tr></table></figure>
+
+<p>实现TODO中的工具函数</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> re</span><br><span class="line"><span class="keyword">import</span> sys</span><br><span class="line"></span><br><span class="line">_URL_PLACEHOLDER_PATTERN = re.compile(<span class="string">'&lt;(.*?)&gt;'</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">get_pipe</span><span class="params">(name)</span>:</span></span><br><span class="line">    <span class="string">"""通过 mod.ClassName 导入自定义的PipeHandler"""</span></span><br><span class="line">    module_name, obj_name = name.rsplit(<span class="string">'.'</span>, <span class="number">1</span>)</span><br><span class="line">    __import__(module_name)</span><br><span class="line">    module = sys.modules[module_name]</span><br><span class="line">    obj = getattr(module, obj_name)</span><br><span class="line">    <span class="keyword">return</span> obj</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">extract_placeholders</span><span class="params">(url)</span>:</span></span><br><span class="line">    <span class="string">"""</span></span><br><span class="line"><span class="string">    &gt;&gt;&gt; res = extract_placeholders("/&lt;service_name&gt;/resource/&lt;resource_id&gt;/submit/")</span></span><br><span class="line"><span class="string">    &gt;&gt;&gt; assert set(res) == &#123;"service_name", "resource_id"&#125;</span></span><br><span class="line"><span class="string">    :param url: request url name</span></span><br><span class="line"><span class="string">    :return: list of placeholder name</span></span><br><span class="line"><span class="string">    """</span></span><br><span class="line">    <span class="keyword">return</span> _URL_PLACEHOLDER_PATTERN.findall(url)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">replace_placeholder</span><span class="params">(url, placeholder_name, value)</span>:</span></span><br><span class="line">    <span class="keyword">return</span> url.replace(<span class="string">'&lt;&#123;&#125;&gt;'</span>.format(placeholder_name), str(value))</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-实现代理网关的逻辑"><a href="#2-实现代理网关的逻辑" class="headerlink" title="2. 实现代理网关的逻辑"></a>2. 实现代理网关的逻辑</h3><p>代理网关就是要实现接受请求、请求信息过滤（鉴权、参数处理等）、服务发现、发送代理请求、返回信息过滤、异常处理、返回请求结果这样的数据流处理路径</p>
+<p>因为涉及到请求、返回和异常信息的处理（query, data, form, headers, exception等），需要定义拦截器管道如下:</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ExceptionHandler</span><span class="params">(object)</span>:</span></span><br><span class="line">    <span class="string">"""异常处理器，可以自行实现错误的捕获、熔断、服务降级等"""</span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self, decorator=None)</span>:</span></span><br><span class="line">        <span class="keyword">if</span> <span class="keyword">not</span> decorator:</span><br><span class="line">            <span class="keyword">return</span></span><br><span class="line">        <span class="comment"># 使用自定义装饰器覆盖</span></span><br><span class="line">        self.decorator = decorator</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">handle</span><span class="params">(self, e, *args, **kwargs)</span>:</span></span><br><span class="line">        <span class="string">"""异常处理</span></span><br><span class="line"><span class="string">        :param e:</span></span><br><span class="line"><span class="string">        :param args: request args</span></span><br><span class="line"><span class="string">        :param kwargs: request kwargs</span></span><br><span class="line"><span class="string">        :return: tuple(content, status, headers)</span></span><br><span class="line"><span class="string">        :rtype: tuple</span></span><br><span class="line"><span class="string">        """</span></span><br><span class="line">        <span class="keyword">raise</span> NotImplementedError</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">decorator</span><span class="params">(self, func)</span>:</span></span><br><span class="line"></span><br><span class="line"><span class="meta">        @functools.wraps(func)</span></span><br><span class="line">        <span class="function"><span class="keyword">def</span> <span class="title">wrapper</span><span class="params">(*args, **kwargs)</span>:</span></span><br><span class="line">            <span class="keyword">try</span>:</span><br><span class="line">                <span class="keyword">return</span> func(*args, **kwargs)</span><br><span class="line">            <span class="keyword">except</span> Exception <span class="keyword">as</span> e:</span><br><span class="line">                logger.debug(<span class="string">"Exception handle"</span>)</span><br><span class="line">                <span class="keyword">return</span> self.handle(e, *args, **kwargs)</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> wrapper</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">InboundHandler</span><span class="params">(object)</span>:</span></span><br><span class="line">    <span class="string">"""输入处理管道，可自定义一系列拦截器处理请求信息，如验证、鉴权、数据解码、参数包装等"""</span></span><br><span class="line">    __metaclass__ = ABCMeta</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">handle</span><span class="params">(self, request, *args, **kwargs)</span>:</span></span><br><span class="line">        <span class="string">"""</span></span><br><span class="line"><span class="string">        :param dict request: 请求信息 (初始：url, parameters, data, method)，可根据需要添加</span></span><br><span class="line"><span class="string">        :return: (request, args, kwargs)</span></span><br><span class="line"><span class="string">        """</span></span><br><span class="line">        <span class="keyword">raise</span> NotImplementedError</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__call__</span><span class="params">(self, request, *args, **kwargs)</span>:</span></span><br><span class="line">        <span class="keyword">return</span> self.handle(request, *args, **kwargs)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">OutboundHandler</span><span class="params">(object)</span>:</span></span><br><span class="line">    <span class="string">"""输出处理管道，可自定义一系列拦截器处理返回信息，如返回码处理、数据编码等"""</span></span><br><span class="line">    __metaclass__ = ABCMeta</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">handle</span><span class="params">(self, response, headers, status, content, *args, **kwargs)</span>:</span></span><br><span class="line">        <span class="string">"""</span></span><br><span class="line"><span class="string">        :param requests.Response response: origin http response</span></span><br><span class="line"><span class="string">        :param dict headers: the response headers which will be responded</span></span><br><span class="line"><span class="string">        :param int status: the status code which will be responded</span></span><br><span class="line"><span class="string">        :param str content: the content which will be responded</span></span><br><span class="line"><span class="string">        :return: tuple(headers, status, content)</span></span><br><span class="line"><span class="string">        """</span></span><br><span class="line">        <span class="keyword">raise</span> NotImplementedError</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__call__</span><span class="params">(self, response, *args, **kwargs)</span>:</span></span><br><span class="line">        <span class="keyword">return</span> self.handle(response, *args, **kwargs)</span><br></pre></td></tr></table></figure>
+
+<p>这样我们就可以很方便地构造一个这样的处理管道:</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">try</span>:</span><br><span class="line"></span><br><span class="line"><span class="meta">@exception_handler.decorator</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">proxy_request</span><span class="params">(request)</span>:</span></span><br><span class="line">    upstream_req_info = get_upstream_request_info(request)</span><br><span class="line">    <span class="comment"># inbound process</span></span><br><span class="line">    <span class="keyword">for</span> pipe_handler <span class="keyword">in</span> route.inbound_pipes:  <span class="comment"># type: InboundHandler</span></span><br><span class="line">        upstream_req_info, args, kwargs = pipe_handler(upstream_req_info, *args, **kwargs)</span><br><span class="line">    <span class="comment"># proxy request</span></span><br><span class="line">    resp = requests.request(**upstream_req_info)</span><br><span class="line">    <span class="comment"># outbound process</span></span><br><span class="line">    <span class="keyword">for</span> pipe_handler <span class="keyword">in</span> route.outbound_pipes:  <span class="comment"># type: OutboundHandler</span></span><br><span class="line">        headers, status, content = pipe_handler(resp, headers, status, content, *args, **kwargs)</span><br><span class="line">    <span class="keyword">return</span> content, status, headers</span><br></pre></td></tr></table></figure>
+
+<p>顺着这个思路，网关的实现就很简单：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> requests</span><br><span class="line"><span class="keyword">from</span> flask <span class="keyword">import</span> make_response</span><br><span class="line"><span class="keyword">from</span> flask <span class="keyword">import</span> request</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">NoopExceptionHandler</span><span class="params">(ExceptionHandler)</span>:</span></span><br><span class="line"></span><br><span class="line">    DEFAULT_CONTENT = &#123;</span><br><span class="line">        <span class="string">"error_code"</span>: <span class="string">"InternalServerError"</span>,</span><br><span class="line">        <span class="string">"error_message"</span>: <span class="string">""</span>,</span><br><span class="line">        <span class="string">"error_message_chs"</span>: <span class="string">"服务器内部错误"</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">handle</span><span class="params">(self, e, *args, **kwargs)</span>:</span></span><br><span class="line">        logger.exception(<span class="string">"Unknown exception occurred: %s"</span>, e)</span><br><span class="line">        content = dict(self.DEFAULT_CONTENT)</span><br><span class="line">        content[<span class="string">'error_message'</span>] = e.message</span><br><span class="line">        <span class="keyword">return</span> json.dumps(content), <span class="number">500</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">GenericGateway</span><span class="params">(object)</span>:</span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self, app, routes, url_supplier, exception_handler=None)</span>:</span></span><br><span class="line">        <span class="string">"""</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">        :param app: flask app</span></span><br><span class="line"><span class="string">        :type app: flask.Flask</span></span><br><span class="line"><span class="string">        :param routes: 路由列表</span></span><br><span class="line"><span class="string">        :type routes: list of Route</span></span><br><span class="line"><span class="string">        :param url_supplier: 服务名称解析函数，通过service name获取service url: url_supplier(service_name) -&gt; service_url</span></span><br><span class="line"><span class="string">        :type url_supplier: function</span></span><br><span class="line"><span class="string">        :param exception_handler: exception handle decorator</span></span><br><span class="line"><span class="string">        :type exception_handler: ExceptionHandler</span></span><br><span class="line"><span class="string">        """</span></span><br><span class="line">        <span class="keyword">if</span> <span class="keyword">not</span> callable(url_supplier):</span><br><span class="line">            <span class="keyword">raise</span> ValueError(<span class="string">"service url supplier (url_supplier) must be callabe"</span>)</span><br><span class="line"></span><br><span class="line">        self.app = app</span><br><span class="line">        self.routes = routes</span><br><span class="line">        self.url_supplier = url_supplier</span><br><span class="line">        self.exception_handler = exception_handler <span class="keyword">or</span> NoopExceptionHandler()</span><br><span class="line">        self.proxy_list = []</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">get_url</span><span class="params">(self, service_name)</span>:</span></span><br><span class="line">        <span class="keyword">try</span>:</span><br><span class="line">            <span class="keyword">return</span> self.url_supplier(service_name)</span><br><span class="line">        <span class="keyword">except</span> Exception <span class="keyword">as</span> e:</span><br><span class="line">            logger.warning(<span class="string">"Failed to get the url of service: %s"</span>, service_name, exc_info=<span class="literal">True</span>)</span><br><span class="line">            <span class="keyword">raise</span> RuntimeError(<span class="string">"Failed to get the url of service &#123;&#125;: &#123;&#125;"</span>.format(service_name, e))</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">create_request_proxy</span><span class="params">(self, route)</span>:</span></span><br><span class="line"></span><br><span class="line">        logger.info(<span class="string">"Register route: %s"</span>, route.path)</span><br><span class="line"></span><br><span class="line"><span class="meta">        @self.exception_handler.decorator</span></span><br><span class="line">        <span class="function"><span class="keyword">def</span> <span class="title">proxy_request</span><span class="params">(*args, **kwargs)</span>:</span></span><br><span class="line"></span><br><span class="line">            upstream_path = route.upstream_path</span><br><span class="line">            <span class="keyword">for</span> p_name <span class="keyword">in</span> route.upstream_params:</span><br><span class="line">                v = get_params_from_context(p_name, kwargs)</span><br><span class="line">                upstream_path = utils.replace_placeholder(upstream_path, p_name, v)</span><br><span class="line"></span><br><span class="line">            endpoint = self.get_url(route.service_name)</span><br><span class="line"></span><br><span class="line">            final_url = <span class="string">"&#123;&#125;&#123;&#125;"</span>.format(endpoint, upstream_path)</span><br><span class="line">            upstream_req_info = dict(</span><br><span class="line">                url=final_url,</span><br><span class="line">                method=request.method,</span><br><span class="line">                params=request.args,</span><br><span class="line">                data=request.data,</span><br><span class="line">                files=request.files,</span><br><span class="line">                headers=request.headers,</span><br><span class="line">            )</span><br><span class="line">            <span class="keyword">if</span> request.form:</span><br><span class="line">                upstream_req_info[<span class="string">'data'</span>] = request.form</span><br><span class="line"></span><br><span class="line">            <span class="keyword">for</span> pipe_handler <span class="keyword">in</span> route.inbound_pipes:</span><br><span class="line">                upstream_req_info, args, kwargs = pipe_handler(upstream_req_info, *args, **kwargs)</span><br><span class="line"></span><br><span class="line">            content_type = upstream_req_info[<span class="string">'headers'</span>].get(<span class="string">'Content-Type'</span>)</span><br><span class="line">            <span class="keyword">if</span> content_type <span class="keyword">and</span> <span class="string">'boundary'</span> <span class="keyword">in</span> content_type:</span><br><span class="line">                <span class="comment"># requests prepare body时，会使重新生成 boundary，headers中旧的 boundary 会导致上游服务无法识别</span></span><br><span class="line">                upstream_req_info[<span class="string">'headers'</span>] = &#123;k: v <span class="keyword">for</span> k, v <span class="keyword">in</span> upstream_req_info[<span class="string">'headers'</span>].items()&#125;</span><br><span class="line">                upstream_req_info[<span class="string">'headers'</span>].pop(<span class="string">'Content-Type'</span>, <span class="literal">None</span>)</span><br><span class="line">                upstream_req_info[<span class="string">'headers'</span>].pop(<span class="string">'content-type'</span>, <span class="literal">None</span>)</span><br><span class="line">            resp = requests.request(**upstream_req_info)</span><br><span class="line">            status = resp.status_code</span><br><span class="line">            content = <span class="literal">None</span></span><br><span class="line">            headers = resp.headers</span><br><span class="line"></span><br><span class="line">            <span class="keyword">for</span> pipe_handler <span class="keyword">in</span> route.outbound_pipes:</span><br><span class="line">                headers, status, content = pipe_handler(resp, headers, status, content, *args, **kwargs)</span><br><span class="line"></span><br><span class="line">            content = make_response(content <span class="keyword">or</span> resp.content)</span><br><span class="line">            <span class="keyword">for</span> h_name, h_value <span class="keyword">in</span> (headers <span class="keyword">or</span> &#123;&#125;).items():</span><br><span class="line">                content.headers[h_name] = h_value</span><br><span class="line"></span><br><span class="line">            <span class="keyword">return</span> content, status</span><br><span class="line"></span><br><span class="line">        <span class="comment"># 修改函数名称：Flask route注册使用func name必须唯一</span></span><br><span class="line">        proxy_request.__name__ = route.name</span><br><span class="line">        <span class="keyword">return</span> proxy_request</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">_register_route</span><span class="params">(self, route)</span>:</span></span><br><span class="line">        <span class="string">"""</span></span><br><span class="line"><span class="string">        :param Route route:</span></span><br><span class="line"><span class="string">        """</span></span><br><span class="line">        proxy = self.create_request_proxy(route)</span><br><span class="line">        self.proxy_list.append(</span><br><span class="line">            self.app.route(route.path, methods=route.methods)(proxy)</span><br><span class="line">        )</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">register_routes</span><span class="params">(self)</span>:</span></span><br><span class="line">        <span class="keyword">for</span> route <span class="keyword">in</span> self.routes:</span><br><span class="line">            self._register_route(route)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">get_params_from_context</span><span class="params">(param_name, kwargs)</span>:</span></span><br><span class="line">    <span class="string">"""按顺序尝试从url参数、headers、args、form、json中获取参数值</span></span><br><span class="line"><span class="string">    """</span></span><br><span class="line">    payload = &#123;&#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> kwargs <span class="keyword">and</span> kwargs.get(param_name):</span><br><span class="line">        payload = kwargs</span><br><span class="line">    <span class="keyword">elif</span> request.headers.get(param_name):</span><br><span class="line">        payload = request.headers</span><br><span class="line">    <span class="keyword">elif</span> request.args <span class="keyword">and</span> request.args.get(param_name):</span><br><span class="line">        payload = request.args</span><br><span class="line">    <span class="keyword">elif</span> request.form <span class="keyword">and</span> request.form.get(param_name):</span><br><span class="line">        payload = request.form</span><br><span class="line">    <span class="keyword">elif</span> request.data:</span><br><span class="line">        body = json.loads(request.data)</span><br><span class="line">        <span class="keyword">if</span> body <span class="keyword">and</span> body.get(param_name):</span><br><span class="line">            payload = body</span><br><span class="line"></span><br><span class="line">    <span class="keyword">try</span>:</span><br><span class="line">        <span class="keyword">return</span> payload[param_name]</span><br><span class="line">    <span class="keyword">except</span> KeyError <span class="keyword">as</span> e:</span><br><span class="line">        <span class="keyword">raise</span> InvalidParameterException(</span><br><span class="line">            message=<span class="string">"Missing the required params: &#123;&#125;"</span>.format(e),</span><br><span class="line">            message_chs=<span class="string">"缺少必要的参数 &#123;&#125;"</span>.format(e)</span><br><span class="line">        )</span><br></pre></td></tr></table></figure>
+
+<h2 id="测试网关代理功能"><a href="#测试网关代理功能" class="headerlink" title="测试网关代理功能"></a>测试网关代理功能</h2><p>使用unittest简单地验证一下我们的网关有没有问题：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> json</span><br><span class="line"><span class="keyword">import</span> unittest</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> flask</span><br><span class="line"><span class="keyword">import</span> mock</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">TestGateway</span><span class="params">(unittest.TestCase)</span>:</span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">setUp</span><span class="params">(self)</span>:</span></span><br><span class="line">        self.app = flask.Flask(<span class="string">"testing"</span>)</span><br><span class="line">        self.url_map = &#123;</span><br><span class="line">            <span class="string">"mock-server"</span>: <span class="string">"http://127.0.0.1"</span></span><br><span class="line">        &#125;</span><br><span class="line">        self.url_supplier = <span class="keyword">lambda</span> x: self.url_map[x]</span><br><span class="line"></span><br><span class="line">        self.app.route(<span class="string">"/hello"</span>, methods=[<span class="string">"GET"</span>])(<span class="keyword">lambda</span>: <span class="string">"world"</span>)</span><br><span class="line"></span><br><span class="line">        route_1 = &#123;</span><br><span class="line">            <span class="string">"name"</span>: <span class="string">"submit-resource"</span>,</span><br><span class="line">            <span class="string">"service_name"</span>: <span class="string">"mock-server"</span>,</span><br><span class="line">            <span class="string">"methods"</span>: [<span class="string">"POST"</span>],</span><br><span class="line">            <span class="string">"path"</span>: <span class="string">"/accounts/&lt;account&gt;/users/&lt;user&gt;/projects/&lt;project&gt;/&lt;service_name&gt;/resource/"</span></span><br><span class="line">                    <span class="string">"&lt;resource_id&gt;/submit/"</span>,</span><br><span class="line">            <span class="string">"upstream_path"</span>: <span class="string">"/v1/resource/&lt;resource_id&gt;/submit/"</span>,</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        route_2 = &#123;</span><br><span class="line">            <span class="string">"name"</span>: <span class="string">"resource_management"</span>,</span><br><span class="line">            <span class="string">"service_name"</span>: <span class="string">"mock-server"</span>,</span><br><span class="line">            <span class="string">"methods"</span>: [<span class="string">"PUT"</span>, <span class="string">"DELETE"</span>],</span><br><span class="line">            <span class="string">"path"</span>: <span class="string">"/accounts/&lt;account&gt;/users/&lt;user&gt;/projects/&lt;project&gt;/&lt;service_name&gt;/resource/"</span></span><br><span class="line">                    <span class="string">"&lt;resource_id&gt;/"</span>,</span><br><span class="line">            <span class="string">"upstream_path"</span>: <span class="string">"/v1/resource/&lt;resource_id&gt;/"</span>,</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        route_3 = &#123;</span><br><span class="line">            <span class="string">"name"</span>: <span class="string">"resource_access"</span>,</span><br><span class="line">            <span class="string">"service_name"</span>: <span class="string">"mock-server"</span>,</span><br><span class="line">            <span class="string">"methods"</span>: [<span class="string">"GET"</span>],</span><br><span class="line">            <span class="string">"path"</span>: <span class="string">"/accounts/&lt;account&gt;/users/&lt;user&gt;/projects/&lt;project&gt;/&lt;service_name&gt;/resource/"</span></span><br><span class="line">                    <span class="string">"&lt;resource_id&gt;/"</span>,</span><br><span class="line">            <span class="string">"upstream_path"</span>: <span class="string">"/v1/resource/&lt;resource_id&gt;/"</span>,</span><br><span class="line">        &#125;</span><br><span class="line">        self.routes = Route.load([route_1, route_2, route_3])</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">test_app</span><span class="params">(self)</span>:</span></span><br><span class="line">        client = self.app.test_client()</span><br><span class="line">        resp = client.get(<span class="string">"/hello"</span>)</span><br><span class="line">        self.assertEqual(<span class="number">200</span>, resp.status_code)</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">test_multi_routes</span><span class="params">(self, mock_request)</span>:</span></span><br><span class="line">        mock_resp = mock.MagicMock()</span><br><span class="line">        mock_request.return_value = mock_resp</span><br><span class="line">        routes = self.routes</span><br><span class="line"></span><br><span class="line">        gateway = GenericGateway(self.app, routes, url_supplier=self.url_supplier)</span><br><span class="line">        gateway.register_routes()</span><br><span class="line"></span><br><span class="line">        mock_resp.status_code = <span class="number">200</span></span><br><span class="line">        mock_resp.content = <span class="string">b"success"</span></span><br><span class="line">        params = &#123;</span><br><span class="line">            <span class="string">"account"</span>: <span class="string">"testaccount"</span>,</span><br><span class="line">            <span class="string">"user"</span>: <span class="string">"admin"</span>,</span><br><span class="line">            <span class="string">"project"</span>: <span class="string">"default"</span>,</span><br><span class="line">            <span class="string">"resource_id"</span>: <span class="string">"test-resource-id"</span></span><br><span class="line">        &#125;</span><br><span class="line">        data = &#123;<span class="string">"test_k"</span>: <span class="string">"test_v"</span>&#125;</span><br><span class="line"></span><br><span class="line">        client = self.app.test_client()</span><br><span class="line"></span><br><span class="line">        <span class="comment"># POST:/accounts/testaccount/users/admin/projects/default/mock-server/resource/test-resource-id/submit/</span></span><br><span class="line">        resource = self.replace_placeholders(gateway.routes[<span class="number">0</span>].path, params)</span><br><span class="line">        res = client.post(resource, json=data)</span><br><span class="line">        self.assertEqual(<span class="number">200</span>, res.status_code)</span><br><span class="line">        self.assertEqual(mock_resp.content, res.data)</span><br><span class="line">        proxy_req_params = mock_request.call_args[<span class="number">1</span>]</span><br><span class="line">        self.assertEqual(json.dumps(data), proxy_req_params[<span class="string">'data'</span>])</span><br><span class="line">        self.assertEqual(<span class="string">'http://127.0.0.1/v1/resource/test-resource-id/submit/'</span>, proxy_req_params[<span class="string">'url'</span>])</span><br><span class="line"></span><br><span class="line">        <span class="comment"># POST:/accounts/testaccount/users/admin/projects/default/mock-server/resource/test-resource-id/</span></span><br><span class="line">        resource = self.replace_placeholders(gateway.routes[<span class="number">1</span>].path, params)</span><br><span class="line">        res = client.post(resource, json=data)</span><br><span class="line">        self.assertEqual(<span class="number">405</span>, res.status_code)</span><br><span class="line">        proxy_req_params = mock_request.call_args[<span class="number">1</span>]</span><br><span class="line">        self.assertEqual(json.dumps(data), proxy_req_params[<span class="string">'data'</span>])</span><br><span class="line"></span><br><span class="line">        <span class="comment"># PUT:/accounts/testaccount/users/admin/projects/default/mock-server/resource/test-resource-id/</span></span><br><span class="line">        res = client.put(resource, json=data)</span><br><span class="line">        self.assertEqual(<span class="number">200</span>, res.status_code)</span><br><span class="line">        self.assertEqual(mock_resp.content, res.data)</span><br><span class="line">        proxy_req_params = mock_request.call_args[<span class="number">1</span>]</span><br><span class="line">        self.assertEqual(json.dumps(data), proxy_req_params[<span class="string">'data'</span>])</span><br><span class="line">        self.assertEqual(<span class="string">'http://127.0.0.1/v1/resource/test-resource-id/'</span>, proxy_req_params[<span class="string">'url'</span>])</span><br><span class="line"></span><br><span class="line">        <span class="comment"># DELETE:/accounts/testaccount/users/admin/projects/default/mock-server/resource/test-resource-id/</span></span><br><span class="line">        res = client.delete(resource, json=data)</span><br><span class="line">        self.assertEqual(<span class="number">200</span>, res.status_code)</span><br><span class="line">        self.assertEqual(mock_resp.content, res.data)</span><br><span class="line">        proxy_req_params = mock_request.call_args[<span class="number">1</span>]</span><br><span class="line">        self.assertEqual(json.dumps(data), proxy_req_params[<span class="string">'data'</span>])</span><br><span class="line">        self.assertEqual(<span class="string">'http://127.0.0.1/v1/resource/test-resource-id/'</span>, proxy_req_params[<span class="string">'url'</span>])</span><br><span class="line"></span><br><span class="line">        <span class="comment"># GET:/accounts/testaccount/users/admin/projects/default/mock-server/resource/test-resource-id/</span></span><br><span class="line">        res = client.get(resource)</span><br><span class="line">        self.assertEqual(<span class="number">200</span>, res.status_code)</span><br><span class="line">        self.assertEqual(mock_resp.content, res.data)</span><br></pre></td></tr></table></figure>
+
+<h2 id="BTW"><a href="#BTW" class="headerlink" title="BTW"></a>BTW</h2><p>这个Python实现的网关虽然简单明了，但只是在数据流上大致抽象了一个通用网关中间件的处理流程，但是本身是在WSGI程序的基础上构建的，在性能上是有很大的限制的，有时间还是要尝试使用Golang、Java从底层开始实现一遍，才能体会到IO多路复用等优化带来的性能提升。</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:  </strong>木陽
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link: </strong>
+    <a href="http://atomicer.cn/2020/05/20/%E4%BD%BF%E7%94%A8Flask%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E4%BB%A3%E7%90%86%E7%BD%91%E5%85%B3/" title="使用Flask手写一个代理网关">http://atomicer.cn/2020/05/20/使用Flask实现一个代理网关/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" rel="noopener" target="_blank"><i class="fa fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/Python/" rel="tag"><i class="fa fa-tag"></i> Python</a>
+              <a href="/tags/Flask/" rel="tag"><i class="fa fa-tag"></i> Flask</a>
+              <a href="/tags/Gateway/" rel="tag"><i class="fa fa-tag"></i> Gateway</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2019/08/31/dag-in-action/" rel="prev" title="DAG在实际生产中的应用">
+      <i class="fa fa-chevron-left"></i> DAG在实际生产中的应用
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#背景说明"><span class="nav-number">1.</span> <span class="nav-text">背景说明</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#设计与配置声明"><span class="nav-number">2.</span> <span class="nav-text">设计与配置声明</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#代码实现"><span class="nav-number">3.</span> <span class="nav-text">代码实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-创建一个Route类用于载入路由配置"><span class="nav-number">3.1.</span> <span class="nav-text">1. 创建一个Route类用于载入路由配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-实现代理网关的逻辑"><span class="nav-number">3.2.</span> <span class="nav-text">2. 实现代理网关的逻辑</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#测试网关代理功能"><span class="nav-number">4.</span> <span class="nav-text">测试网关代理功能</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#BTW"><span class="nav-number">5.</span> <span class="nav-text">BTW</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="木陽"
+      src="/mine.jpg">
+  <p class="site-author-name" itemprop="name">木陽</p>
+  <div class="site-description" itemprop="description">木之陽兮  卿云烂兮</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">32</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">16</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">50</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/raomuyang" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;raomuyang" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="http://mail.qq.com/cgi-bin/qm_share?t=qm_mailme&email=RzUmKCoiKSApJikHISg-KiYuK2kkKCo" title="E-Mail → http:&#x2F;&#x2F;mail.qq.com&#x2F;cgi-bin&#x2F;qm_share?t&#x3D;qm_mailme&amp;email&#x3D;RzUmKCoiKSApJikHISg-KiYuK2kkKCo" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="/atom.xml" title="RSS → &#x2F;atom.xml"><i class="fa fa-fw fa-rss"></i>RSS</a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+  <div class="beian"><a href="http://www.beian.miit.gov.cn/" rel="noopener" target="_blank">赣ICP备16004083号 </a>
+  </div>
+
+<div class="copyright">
+  
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">木陽  使用<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">(CC) BY-NC-SA</a> 许可发布</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+  <script>
+    (function(){
+      var bp = document.createElement('script');
+      var curProtocol = window.location.protocol.split(':')[0];
+      bp.src = (curProtocol === 'https') ? 'https://zz.bdstatic.com/linksubmit/push.js' : 'http://push.zhanzhang.baidu.com/push.js';
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(bp, s);
+    })();
+  </script>
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

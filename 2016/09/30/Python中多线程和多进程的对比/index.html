@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon.png">
+  <link rel="mask-icon" href="/favicon.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://atomicer.cn').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="Python是运行在解释器中的语言，查找资料知道，python中有一个全局锁（GIL），在使用多进程(Thread)的情况下，不能发挥多核的优势。而使用多进程(Multiprocess)，则可以发挥多核的优势真正地提高效率。  对比实验资料显示，如果多线程的进程是CPU密集型的，那多线程并不能有多少效率上的提升，相反还可能会因为线程的频繁切换，导致效率下降，推荐使用多进程；如果是IO密集型，多线">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Python中单线程、多线程与多进程的效率对比实验">
+<meta property="og:url" content="http://atomicer.cn/2016/09/30/Python%E4%B8%AD%E5%A4%9A%E7%BA%BF%E7%A8%8B%E5%92%8C%E5%A4%9A%E8%BF%9B%E7%A8%8B%E7%9A%84%E5%AF%B9%E6%AF%94/index.html">
+<meta property="og:site_name" content="木陽">
+<meta property="og:description" content="Python是运行在解释器中的语言，查找资料知道，python中有一个全局锁（GIL），在使用多进程(Thread)的情况下，不能发挥多核的优势。而使用多进程(Multiprocess)，则可以发挥多核的优势真正地提高效率。  对比实验资料显示，如果多线程的进程是CPU密集型的，那多线程并不能有多少效率上的提升，相反还可能会因为线程的频繁切换，导致效率下降，推荐使用多进程；如果是IO密集型，多线">
+<meta property="og:image" content="http://cloud.atomicer.cn/blog-img/20160930/python/multiprogress_result.png">
+<meta property="article:published_time" content="2016-09-30T07:05:47.000Z">
+<meta property="article:modified_time" content="2020-05-30T09:25:26.300Z">
+<meta property="article:author" content="木陽">
+<meta property="article:tag" content="多线程">
+<meta property="article:tag" content="多进程">
+<meta property="article:tag" content="Python">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://cloud.atomicer.cn/blog-img/20160930/python/multiprogress_result.png">
+
+<link rel="canonical" href="http://atomicer.cn/2016/09/30/Python%E4%B8%AD%E5%A4%9A%E7%BA%BF%E7%A8%8B%E5%92%8C%E5%A4%9A%E8%BF%9B%E7%A8%8B%E7%9A%84%E5%AF%B9%E6%AF%94/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>Python中单线程、多线程与多进程的效率对比实验 | 木陽</title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-82755477-1"></script>
+    <script>
+      if (CONFIG.hostname === location.hostname) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-82755477-1');
+      }
+    </script>
+
+
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?28428a78c9ad21d09428f89378d9c50b";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">木陽</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <h1 class="site-subtitle" itemprop="description">木之陽兮  卿云烂兮</h1>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>Categories</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>Search
+        </a>
+      </li>
+  </ul>
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="none"
+           placeholder="Searching..." spellcheck="false"
+           type="text" id="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="http://atomicer.cn/2016/09/30/Python%E4%B8%AD%E5%A4%9A%E7%BA%BF%E7%A8%8B%E5%92%8C%E5%A4%9A%E8%BF%9B%E7%A8%8B%E7%9A%84%E5%AF%B9%E6%AF%94/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/mine.jpg">
+      <meta itemprop="name" content="木陽">
+      <meta itemprop="description" content="木之陽兮  卿云烂兮">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="木陽">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          Python中单线程、多线程与多进程的效率对比实验
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2016-09-30 07:05:47" itemprop="dateCreated datePublished" datetime="2016-09-30T07:05:47+00:00">2016-09-30</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Python/" itemprop="url" rel="index">
+                    <span itemprop="name">Python</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <blockquote>
+<p>Python是运行在解释器中的语言，查找资料知道，python中有一个全局锁（GIL），在使用多进程(Thread)的情况下，不能发挥多核的优势。而使用多进程(Multiprocess)，则可以发挥多核的优势真正地提高效率。</p>
+</blockquote>
+<h2 id="对比实验"><a href="#对比实验" class="headerlink" title="对比实验"></a>对比实验</h2><p>资料显示，如果多线程的进程是<strong>CPU密集型</strong>的，那多线程并不能有多少效率上的提升，相反还可能会因为线程的频繁切换，导致效率下降，推荐使用多进程；如果是<strong>IO密集型</strong>，多线程进程可以利用IO阻塞等待时的空闲时间执行其他线程，提升效率。所以我们根据实验对比不同场景的效率</p>
+<table>
+<thead>
+<tr>
+<th>操作系统</th>
+<th>CPU</th>
+<th>内存</th>
+<th>硬盘</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Windows 10</td>
+<td>双核</td>
+<td>8GB</td>
+<td>机械硬盘</td>
+</tr>
+</tbody></table>
+<a id="more"></a>
+
+<h3 id="准备"><a href="#准备" class="headerlink" title="准备"></a>准备</h3><h4 id="1-引入所需要的模块"><a href="#1-引入所需要的模块" class="headerlink" title="(1)引入所需要的模块"></a>(1)引入所需要的模块</h4><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> requests</span><br><span class="line"><span class="keyword">import</span> time</span><br><span class="line"><span class="keyword">from</span> threading <span class="keyword">import</span> Thread</span><br><span class="line"><span class="keyword">from</span> multiprocessing <span class="keyword">import</span> Process</span><br></pre></td></tr></table></figure>
+
+<h4 id="2-定义CPU密集的计算函数"><a href="#2-定义CPU密集的计算函数" class="headerlink" title="(2)定义CPU密集的计算函数"></a>(2)定义CPU密集的计算函数</h4><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">count</span><span class="params">(x, y)</span>:</span></span><br><span class="line">    <span class="comment"># 使程序完成50万计算</span></span><br><span class="line">    c = <span class="number">0</span></span><br><span class="line">    <span class="keyword">while</span> c &lt; <span class="number">500000</span>:</span><br><span class="line">        c += <span class="number">1</span></span><br><span class="line">        x += x</span><br><span class="line">        y += y</span><br></pre></td></tr></table></figure>
+
+<h4 id="3-定义IO密集的文件读写函数"><a href="#3-定义IO密集的文件读写函数" class="headerlink" title="(3)定义IO密集的文件读写函数"></a>(3)定义IO密集的文件读写函数</h4><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">write</span><span class="params">(name=<span class="number">0</span>)</span>:</span></span><br><span class="line">    <span class="comment"># name: 防止并发写同一个文件；</span></span><br><span class="line">    <span class="comment"># concurrence: 保证在不同的并发数下磁盘写入字节数相同</span></span><br><span class="line">    f = open(<span class="string">"test-&#123;&#125;.txt"</span>.format(name), <span class="string">"w"</span>)</span><br><span class="line">    <span class="keyword">for</span> x <span class="keyword">in</span> range(<span class="number">5000000</span>):</span><br><span class="line">        f.write(<span class="string">"testwrite\n"</span>)</span><br><span class="line">    f.close()</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">read</span><span class="params">(name=<span class="number">0</span>)</span>:</span></span><br><span class="line">    f = open(<span class="string">"test-&#123;&#125;.txt"</span>.format(name), <span class="string">"r"</span>)</span><br><span class="line">    lines = f.readlines()</span><br><span class="line">    f.close()</span><br></pre></td></tr></table></figure>
+
+<h4 id="4-定义网络请求函数"><a href="#4-定义网络请求函数" class="headerlink" title="(4)定义网络请求函数"></a>(4)定义网络请求函数</h4><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">_head = &#123;</span><br><span class="line">            <span class="string">'User-Agent'</span>: <span class="string">'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.116 Safari/537.36'</span>&#125;</span><br><span class="line">url = <span class="string">"http://www.tieba.com"</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">http_request</span><span class="params">()</span>:</span></span><br><span class="line">    <span class="keyword">try</span>:</span><br><span class="line">        webPage = requests.get(url, headers=_head)</span><br><span class="line">        html = webPage.text</span><br><span class="line">        <span class="keyword">return</span> &#123;<span class="string">"context"</span>: html&#125;</span><br><span class="line">    <span class="keyword">except</span> Exception <span class="keyword">as</span> e:</span><br><span class="line">        <span class="keyword">return</span> &#123;<span class="string">"error"</span>: e&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="单线程测试"><a href="#单线程测试" class="headerlink" title="单线程测试"></a>单线程测试</h3><h4 id="5-测试线性执行IO密集操作、CPU密集操作所需时间、网络请求密集型操作所需时间"><a href="#5-测试线性执行IO密集操作、CPU密集操作所需时间、网络请求密集型操作所需时间" class="headerlink" title="(5)测试线性执行IO密集操作、CPU密集操作所需时间、网络请求密集型操作所需时间"></a>(5)测试线性执行IO密集操作、CPU密集操作所需时间、网络请求密集型操作所需时间</h4><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># CPU密集操作</span></span><br><span class="line">t = time.time()</span><br><span class="line"><span class="keyword">for</span> x <span class="keyword">in</span> range(<span class="number">10</span>):</span><br><span class="line">    count(<span class="number">1</span>, <span class="number">1</span>)</span><br><span class="line">print(<span class="string">"Line cpu"</span>, time.time() - t)</span><br><span class="line"></span><br><span class="line"><span class="comment"># IO密集操作</span></span><br><span class="line">t = time.time()</span><br><span class="line"><span class="keyword">for</span> x <span class="keyword">in</span> range(<span class="number">10</span>):</span><br><span class="line">    write()</span><br><span class="line">    read()</span><br><span class="line">print(<span class="string">"Line IO"</span>, time.time() - t)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 网络请求密集型操作</span></span><br><span class="line">t = time.time()</span><br><span class="line"><span class="keyword">for</span> x <span class="keyword">in</span> range(<span class="number">10</span>):</span><br><span class="line">    http_request()</span><br><span class="line">print(<span class="string">"Line Http Request"</span>, time.time() - t)</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>输出</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th></th>
+<th align="center"></th>
+<th align="center"></th>
+<th align="center"></th>
+<th align="center"></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CPU密集</td>
+<td align="center">95.6059999466</td>
+<td align="center">91.57099986076355</td>
+<td align="center">92.52800011634827</td>
+<td align="center">99.96799993515015</td>
+</tr>
+<tr>
+<td>IO密集</td>
+<td align="center">24.25</td>
+<td align="center">21.76699995994568</td>
+<td align="center">21.769999980926514</td>
+<td align="center">22.060999870300293</td>
+</tr>
+<tr>
+<td>网络请求密集型</td>
+<td align="center">4.519999980926514</td>
+<td align="center">8.563999891281128</td>
+<td align="center">4.371000051498413</td>
+<td align="center">14.671000003814697</td>
+</tr>
+</tbody></table>
+<h3 id="多线程测试"><a href="#多线程测试" class="headerlink" title="多线程测试"></a>多线程测试</h3><h4 id="6-测试多线程并发执行CPU密集操作所需时间"><a href="#6-测试多线程并发执行CPU密集操作所需时间" class="headerlink" title="(6)测试多线程并发执行CPU密集操作所需时间"></a>(6)测试多线程并发执行CPU密集操作所需时间</h4><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 列表生成</span></span><br><span class="line">threads = [Thread(target=count, args=(<span class="number">1</span>,<span class="number">1</span>)) <span class="keyword">for</span> _ <span class="keyword">in</span> range(<span class="number">10</span>)]</span><br><span class="line">start = time.time()</span><br><span class="line"><span class="keyword">for</span> t <span class="keyword">in</span> threads:</span><br><span class="line">    t.start()</span><br><span class="line"><span class="keyword">for</span> t <span class="keyword">in</span> threads:</span><br><span class="line">    t.join()</span><br><span class="line"></span><br><span class="line">print(time.time() - start)</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>output</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>99.9240000248</td>
+</tr>
+<tr>
+<td>101.26400017738342</td>
+</tr>
+<tr>
+<td>102.32200002670288</td>
+</tr>
+</tbody></table>
+<h4 id="7-测试多线程并发执行IO密集操作所需时间"><a href="#7-测试多线程并发执行IO密集操作所需时间" class="headerlink" title="(7)测试多线程并发执行IO密集操作所需时间"></a>(7)测试多线程并发执行IO密集操作所需时间</h4><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">io</span><span class="params">(name)</span>:</span></span><br><span class="line">    write(name)</span><br><span class="line">    read(name)</span><br><span class="line"></span><br><span class="line">start = time.time()</span><br><span class="line">threads = [Thread(target=io, args=(i,)) <span class="keyword">for</span> i <span class="keyword">in</span> range(<span class="number">10</span>)]</span><br><span class="line"><span class="keyword">for</span> t <span class="keyword">in</span> threads:</span><br><span class="line">    t.start()</span><br><span class="line"><span class="keyword">for</span> t <span class="keyword">in</span> threads:</span><br><span class="line">    t.join()</span><br><span class="line">print(time.time() - start)</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>Output</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>84.7796590328</td>
+</tr>
+<tr>
+<td>108.204546928</td>
+</tr>
+</tbody></table>
+<h4 id="8-测试多线程并发执行网络密集操作所需时间"><a href="#8-测试多线程并发执行网络密集操作所需时间" class="headerlink" title="(8)测试多线程并发执行网络密集操作所需时间"></a>(8)测试多线程并发执行网络密集操作所需时间</h4><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">threads = [Thread(target=http_request) <span class="keyword">for</span> _ <span class="keyword">in</span> range(<span class="number">10</span>)]</span><br><span class="line">start = time.time()</span><br><span class="line"><span class="keyword">for</span> t <span class="keyword">in</span> threads:</span><br><span class="line">    t.start()</span><br><span class="line"><span class="keyword">for</span> t <span class="keyword">in</span> threads:</span><br><span class="line">    t.join()</span><br><span class="line"></span><br><span class="line">print(<span class="string">"Thread Http Request"</span>, time.time() - t)</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>Output</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0.7419998645782471</td>
+</tr>
+<tr>
+<td>0.3839998245239258</td>
+</tr>
+<tr>
+<td>0.3900001049041748</td>
+</tr>
+</tbody></table>
+<h3 id="多进程测试"><a href="#多进程测试" class="headerlink" title="多进程测试"></a>多进程测试</h3><h4 id="9-测试多进程并发执行CPU密集操作所需时间"><a href="#9-测试多进程并发执行CPU密集操作所需时间" class="headerlink" title="(9)测试多进程并发执行CPU密集操作所需时间"></a>(9)测试多进程并发执行CPU密集操作所需时间</h4><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">p_list = [Process(target=count, args=(<span class="number">1</span>,<span class="number">1</span>)) <span class="keyword">for</span> _ <span class="keyword">in</span> range(<span class="number">10</span>)]</span><br><span class="line">start = time.time()</span><br><span class="line"><span class="keyword">for</span> p <span class="keyword">in</span> p_list:</span><br><span class="line">    p.start()</span><br><span class="line"><span class="keyword">for</span> p <span class="keyword">in</span> p_list:</span><br><span class="line">    p.join()</span><br><span class="line">print(<span class="string">"Multiprocess cpu"</span>, time.time() - start)</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>Output</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>54.342000007629395</td>
+</tr>
+<tr>
+<td>53.437999963760376</td>
+</tr>
+</tbody></table>
+<h4 id="10-测试多进程并发执行IO密集型操作"><a href="#10-测试多进程并发执行IO密集型操作" class="headerlink" title="(10)测试多进程并发执行IO密集型操作"></a>(10)测试多进程并发执行IO密集型操作</h4><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">p_list = [Process(target=io, args=(i,)) <span class="keyword">for</span> i <span class="keyword">in</span> range(<span class="number">10</span>)]</span><br><span class="line">start = time.time()</span><br><span class="line"><span class="keyword">for</span> p <span class="keyword">in</span> p_list:</span><br><span class="line">    p.start()</span><br><span class="line"><span class="keyword">for</span> p <span class="keyword">in</span> p_list:</span><br><span class="line">    p.join()</span><br><span class="line"></span><br><span class="line">print(<span class="string">"Multiprocess IO"</span>, time.time() - start)</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>Output</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>12.509000062942505</td>
+</tr>
+<tr>
+<td>13.059000015258789</td>
+</tr>
+</tbody></table>
+<h4 id="11-测试多进程并发执行Http请求密集型操作"><a href="#11-测试多进程并发执行Http请求密集型操作" class="headerlink" title="(11)测试多进程并发执行Http请求密集型操作"></a>(11)测试多进程并发执行Http请求密集型操作</h4><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">p_list = [Process(target=http_request) <span class="keyword">for</span> i <span class="keyword">in</span> range(<span class="number">10</span>)]</span><br><span class="line">start = time.time()</span><br><span class="line"><span class="keyword">for</span> p <span class="keyword">in</span> p_list:</span><br><span class="line">    p.start()</span><br><span class="line"><span class="keyword">for</span> p <span class="keyword">in</span> p_list:</span><br><span class="line">    p.join()</span><br><span class="line"></span><br><span class="line">print(<span class="string">"Multiprocess Http Request"</span>, time.time() - start)</span><br><span class="line">```  </span><br><span class="line"></span><br><span class="line">|Output|</span><br><span class="line">|:---:|</span><br><span class="line">|<span class="number">0.5329999923706055</span>|</span><br><span class="line">|<span class="number">0.4760000705718994</span>|  </span><br><span class="line"></span><br><span class="line">---</span><br><span class="line"></span><br><span class="line"><span class="comment">### 实验结果</span></span><br><span class="line"></span><br><span class="line">|  | CPU密集型操作 | IO密集型操作 | 网络请求密集型操作 |</span><br><span class="line">|:--:|:--------------:|:-------------:|:-------------------:|</span><br><span class="line">|线性操作|<span class="number">94.91824996469</span>|<span class="number">22.46199995279</span>|<span class="number">7.3296000004</span>|</span><br><span class="line">|多线程操作|<span class="number">101.1700000762</span>|<span class="number">96.4921029804</span>|<span class="number">0.5053332647</span>|</span><br><span class="line">|多进程操作|<span class="number">53.8899999857</span>|<span class="number">12.7840000391</span>|<span class="number">0.5045000315</span>|</span><br><span class="line"></span><br><span class="line">结果中的多线程表现非常奇怪，为什么IO密集型的操作在多线程的场景下反而更慢呢？(感谢读者提出的问题) 我们看一下`write`函数：</span><br><span class="line"></span><br><span class="line">```python</span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">write</span><span class="params">(name=<span class="number">0</span>)</span>:</span></span><br><span class="line">    <span class="comment"># name: 防止并发写同一个文件；</span></span><br><span class="line">    <span class="comment"># concurrence: 保证在不同的并发数下磁盘写入字节数相同</span></span><br><span class="line">    f = open(<span class="string">"test-&#123;&#125;.txt"</span>.format(name), <span class="string">"w"</span>)</span><br><span class="line">    <span class="keyword">for</span> x <span class="keyword">in</span> range(<span class="number">5000000</span>):</span><br><span class="line">        f.write(<span class="string">"testwrite\n"</span>)</span><br><span class="line">    f.close()</span><br></pre></td></tr></table></figure>
+
+<p><code>write</code>函数中有5000000个循环，这妥妥的也是cpu密集型，我们把它改造一下：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">data = <span class="string">"\n"</span>.join([<span class="string">"testwrite"</span> <span class="keyword">for</span> i <span class="keyword">in</span> range(<span class="number">5000</span>)])</span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">write</span><span class="params">(name=None)</span>:</span></span><br><span class="line">    f = open(<span class="string">"test-&#123;&#125;.txt"</span>.format(name), <span class="string">"w"</span>)</span><br><span class="line">    <span class="keyword">for</span> x <span class="keyword">in</span> range(<span class="number">1000</span>):</span><br><span class="line">        f.write(<span class="string">"testwrite\n"</span>)</span><br><span class="line">    f.close()</span><br></pre></td></tr></table></figure>
+
+<p>使用改造后的函数，重新运行IO密集的测试：</p>
+<table>
+<thead>
+<tr>
+<th align="center"></th>
+<th align="center">单线程</th>
+<th align="center">多线程</th>
+<th align="center">多进程</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">IO耗时</td>
+<td align="center">0.0199999</td>
+<td align="center">0.02644586</td>
+<td align="center">0.1005110740</td>
+</tr>
+</tbody></table>
+<p>差异不大，反倒是速度上 <code>单线程 &gt; 多线程 &gt; 多进程</code>，显而易见，磁盘IO并没有被打满，多线程场景下多出的视角应该是线程切换和GIL产生的；多进程场景下的视角增长应该由于进程切换产生的；</p>
+<p>虽然磁盘IO上无法完成测试，但是我们佐证了GIL对cpu密集型的多线程影响。</p>
+<p>通过上面的结果，我们可以看到：</p>
+<ul>
+<li>在CPU密集型的操作下明显地比单线程线性执行性能更差，但是对于网络请求这种忙等阻塞线程的操作，多线程的优势便非常显著了</li>
+<li>多进程无论是在CPU密集型还是IO密集型以及网络请求密集型（经常发生线程阻塞的操作）中，都能体现出性能的优势。不过在类似网络请求密集型的操作上，与多线程相差无几，但却更占用CPU等资源，所以对于这种情况下，我们可以选择多线程来执行<br><img src="http://cloud.atomicer.cn/blog-img/20160930/python/multiprogress_result.png" alt="多线程的效果"></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:  </strong>木陽
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link: </strong>
+    <a href="http://atomicer.cn/2016/09/30/Python%E4%B8%AD%E5%A4%9A%E7%BA%BF%E7%A8%8B%E5%92%8C%E5%A4%9A%E8%BF%9B%E7%A8%8B%E7%9A%84%E5%AF%B9%E6%AF%94/" title="Python中单线程、多线程与多进程的效率对比实验">http://atomicer.cn/2016/09/30/Python中多线程和多进程的对比/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" rel="noopener" target="_blank"><i class="fa fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/%E5%A4%9A%E7%BA%BF%E7%A8%8B/" rel="tag"><i class="fa fa-tag"></i> 多线程</a>
+              <a href="/tags/%E5%A4%9A%E8%BF%9B%E7%A8%8B/" rel="tag"><i class="fa fa-tag"></i> 多进程</a>
+              <a href="/tags/Python/" rel="tag"><i class="fa fa-tag"></i> Python</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2016/08/12/Windows%E4%B8%8B%E5%AE%89%E8%A3%85MongoDB%E6%9C%8D%E5%8A%A1%E5%B9%B6%E9%85%8D%E7%BD%AE%E7%94%A8%E6%88%B7%E6%9D%83%E9%99%90/" rel="prev" title="Windows下安装MongoDB服务并配置用户权限">
+      <i class="fa fa-chevron-left"></i> Windows下安装MongoDB服务并配置用户权限
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2016/10/12/%E4%BD%BF%E7%94%A8Docker%E5%8A%A0Nginx%E6%A8%A1%E6%8B%9F%E5%AE%9E%E7%8E%B0%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1/" rel="next" title="使用Docker+Nginx模拟负载均衡">
+      使用Docker+Nginx模拟负载均衡 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#对比实验"><span class="nav-number">1.</span> <span class="nav-text">对比实验</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#准备"><span class="nav-number">1.1.</span> <span class="nav-text">准备</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-引入所需要的模块"><span class="nav-number">1.1.1.</span> <span class="nav-text">(1)引入所需要的模块</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-定义CPU密集的计算函数"><span class="nav-number">1.1.2.</span> <span class="nav-text">(2)定义CPU密集的计算函数</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-定义IO密集的文件读写函数"><span class="nav-number">1.1.3.</span> <span class="nav-text">(3)定义IO密集的文件读写函数</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-定义网络请求函数"><span class="nav-number">1.1.4.</span> <span class="nav-text">(4)定义网络请求函数</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#单线程测试"><span class="nav-number">1.2.</span> <span class="nav-text">单线程测试</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#5-测试线性执行IO密集操作、CPU密集操作所需时间、网络请求密集型操作所需时间"><span class="nav-number">1.2.1.</span> <span class="nav-text">(5)测试线性执行IO密集操作、CPU密集操作所需时间、网络请求密集型操作所需时间</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#多线程测试"><span class="nav-number">1.3.</span> <span class="nav-text">多线程测试</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#6-测试多线程并发执行CPU密集操作所需时间"><span class="nav-number">1.3.1.</span> <span class="nav-text">(6)测试多线程并发执行CPU密集操作所需时间</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#7-测试多线程并发执行IO密集操作所需时间"><span class="nav-number">1.3.2.</span> <span class="nav-text">(7)测试多线程并发执行IO密集操作所需时间</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#8-测试多线程并发执行网络密集操作所需时间"><span class="nav-number">1.3.3.</span> <span class="nav-text">(8)测试多线程并发执行网络密集操作所需时间</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#多进程测试"><span class="nav-number">1.4.</span> <span class="nav-text">多进程测试</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#9-测试多进程并发执行CPU密集操作所需时间"><span class="nav-number">1.4.1.</span> <span class="nav-text">(9)测试多进程并发执行CPU密集操作所需时间</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#10-测试多进程并发执行IO密集型操作"><span class="nav-number">1.4.2.</span> <span class="nav-text">(10)测试多进程并发执行IO密集型操作</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#11-测试多进程并发执行Http请求密集型操作"><span class="nav-number">1.4.3.</span> <span class="nav-text">(11)测试多进程并发执行Http请求密集型操作</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="木陽"
+      src="/mine.jpg">
+  <p class="site-author-name" itemprop="name">木陽</p>
+  <div class="site-description" itemprop="description">木之陽兮  卿云烂兮</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">32</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">16</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">50</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/raomuyang" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;raomuyang" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="http://mail.qq.com/cgi-bin/qm_share?t=qm_mailme&email=RzUmKCoiKSApJikHISg-KiYuK2kkKCo" title="E-Mail → http:&#x2F;&#x2F;mail.qq.com&#x2F;cgi-bin&#x2F;qm_share?t&#x3D;qm_mailme&amp;email&#x3D;RzUmKCoiKSApJikHISg-KiYuK2kkKCo" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="/atom.xml" title="RSS → &#x2F;atom.xml"><i class="fa fa-fw fa-rss"></i>RSS</a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+  <div class="beian"><a href="http://www.beian.miit.gov.cn/" rel="noopener" target="_blank">赣ICP备16004083号 </a>
+  </div>
+
+<div class="copyright">
+  
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">木陽  使用<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">(CC) BY-NC-SA</a> 许可发布</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+  <script>
+    (function(){
+      var bp = document.createElement('script');
+      var curProtocol = window.location.protocol.split(':')[0];
+      bp.src = (curProtocol === 'https') ? 'https://zz.bdstatic.com/linksubmit/push.js' : 'http://push.zhanzhang.baidu.com/push.js';
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(bp, s);
+    })();
+  </script>
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon.png">
+  <link rel="mask-icon" href="/favicon.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://atomicer.cn').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="最近在开发一个工具时遇到了一个根据输入参数渲染yml文件的问题:  需要在yaml样板的指定的位置上填入指定的值，yml样板随时可能更新 需要根据输入参数以及对应字段的生成规则动态生成对象、数组（长度不固定）、字符串等各种类型的值  这种情况下，最先想到的就是直接使用占位符或者模板语言。但是经过实践发现了两个问题：  yaml文件样板更新时，必须从旧模板上的迁移占位符，增大了维护的负担（特别是生产">
+<meta property="og:type" content="article">
+<meta property="og:title" content="动态渲染Yaml文件（使用 模板映射 + Jinja2 方案）">
+<meta property="og:url" content="http://atomicer.cn/2019/06/05/%E4%BD%BF%E7%94%A8Jinja%E5%8A%A8%E6%80%81%E6%B8%B2%E6%9F%93Yaml%E6%96%87%E4%BB%B6%E7%9A%84%E6%96%B9%E6%A1%88/index.html">
+<meta property="og:site_name" content="木陽">
+<meta property="og:description" content="最近在开发一个工具时遇到了一个根据输入参数渲染yml文件的问题:  需要在yaml样板的指定的位置上填入指定的值，yml样板随时可能更新 需要根据输入参数以及对应字段的生成规则动态生成对象、数组（长度不固定）、字符串等各种类型的值  这种情况下，最先想到的就是直接使用占位符或者模板语言。但是经过实践发现了两个问题：  yaml文件样板更新时，必须从旧模板上的迁移占位符，增大了维护的负担（特别是生产">
+<meta property="article:published_time" content="2019-06-05T15:48:14.000Z">
+<meta property="article:modified_time" content="2020-05-30T09:25:26.300Z">
+<meta property="article:author" content="木陽">
+<meta property="article:tag" content="yml">
+<meta property="article:tag" content="Jinja2">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://atomicer.cn/2019/06/05/%E4%BD%BF%E7%94%A8Jinja%E5%8A%A8%E6%80%81%E6%B8%B2%E6%9F%93Yaml%E6%96%87%E4%BB%B6%E7%9A%84%E6%96%B9%E6%A1%88/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>动态渲染Yaml文件（使用 模板映射 + Jinja2 方案） | 木陽</title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-82755477-1"></script>
+    <script>
+      if (CONFIG.hostname === location.hostname) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-82755477-1');
+      }
+    </script>
+
+
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?28428a78c9ad21d09428f89378d9c50b";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">木陽</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <h1 class="site-subtitle" itemprop="description">木之陽兮  卿云烂兮</h1>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>Categories</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>Search
+        </a>
+      </li>
+  </ul>
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="none"
+           placeholder="Searching..." spellcheck="false"
+           type="text" id="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="http://atomicer.cn/2019/06/05/%E4%BD%BF%E7%94%A8Jinja%E5%8A%A8%E6%80%81%E6%B8%B2%E6%9F%93Yaml%E6%96%87%E4%BB%B6%E7%9A%84%E6%96%B9%E6%A1%88/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/mine.jpg">
+      <meta itemprop="name" content="木陽">
+      <meta itemprop="description" content="木之陽兮  卿云烂兮">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="木陽">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          动态渲染Yaml文件（使用 模板映射 + Jinja2 方案）
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2019-06-05 15:48:14" itemprop="dateCreated datePublished" datetime="2019-06-05T15:48:14+00:00">2019-06-05</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>最近在开发一个工具时遇到了一个根据输入参数渲染yml文件的问题:</p>
+<ul>
+<li>需要在yaml样板的指定的位置上填入指定的值，yml样板随时可能更新</li>
+<li>需要根据输入参数以及对应字段的生成规则动态生成对象、数组（长度不固定）、字符串等各种类型的值</li>
+</ul>
+<p>这种情况下，最先想到的就是直接使用占位符或者模板语言。但是经过实践发现了两个问题：</p>
+<ol>
+<li>yaml文件样板更新时，必须从旧模板上的迁移占位符，增大了维护的负担（特别是生产中用到的yaml文件通常有上千行）</li>
+<li>生成规则不固定，需要在工具中硬编码指定某些特定属性的生成规则，使业务逻辑高度耦合</li>
+</ol>
+<p>所以使用占位符或者模板语言直接作用在yaml样板上思路就是错的，我们应该通过一个中间的配置来定义yml文件的生成规则，这样才能使工具和业务逻辑解耦合，并且降低维护的难度。</p>
+<a id="more"></a>
+
+<h2 id="二维结构的转换"><a href="#二维结构的转换" class="headerlink" title="二维结构的转换"></a>二维结构的转换</h2><p>首先要解决的是，如何在yml结构的指定位置插入指定的值：即<code>Key - Value</code>映射关系的定义。yml和json是等价的，不过层层嵌套的结构显然增大了模板渲染的难度，我们可以通过这种方式将多维的结构转为二维的：</p>
+<figure class="highlight yml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">Inputs:</span></span><br><span class="line">  <span class="attr">datas:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">data1</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">data2</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">data3</span></span><br></pre></td></tr></table></figure>
+
+<p>转为二维的结构：</p>
+<figure class="highlight properties"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">Inputs.datas.$0</span> = <span class="string">data1</span></span><br><span class="line"><span class="meta">Inputs.datas.$1</span> = <span class="string">data2</span></span><br><span class="line"><span class="meta">Inputs.datas.$2</span> = <span class="string">data3</span></span><br></pre></td></tr></table></figure>
+
+<p>有没有想起MongoDB的查询语句或者Spring boot的配置？没错，这就是参考<code>application.yml</code>转写<code>application.properties</code>的格式，将yaml文件展开为二维的。 转为二维之后，模板就变成了简单的键值渲染逻辑：通过<code>Key Name</code>定位到yaml的指定属性将<code>Value</code>填充</p>
+<h2 id="参数与属性的映射"><a href="#参数与属性的映射" class="headerlink" title="参数与属性的映射"></a>参数与属性的映射</h2><p>如果只是简单地定义了一些属性的值，那么到前文提到的键值映射解析就结束了，但是我们的场景是通过 <code>输入</code> + <code>规则</code>生成指定属性的值，举个例子:</p>
+<p>输入参数：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    <span class="attr">"project_id"</span>: <span class="string">"F19"</span>,</span><br><span class="line">    <span class="attr">"subproject_id"</span>: <span class="string">"HUM"</span>,</span><br><span class="line">    <span class="attr">"sample_id"</span>: <span class="string">"AW"</span>,</span><br><span class="line">    <span class="attr">"lane_id"</span>: <span class="string">"B2"</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>目标输出：</p>
+<figure class="highlight yml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">Inputs:</span></span><br><span class="line">  <span class="attr">loaddata_fq:</span></span><br><span class="line">    <span class="attr">data:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">"F19/HUM/AW/clean_data/B2.fq.gz"</span></span><br><span class="line">  <span class="attr">loaddata_bam:</span></span><br><span class="line">    <span class="attr">data:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">"F19/HUM/AW/clean_data/B2.bam1.bam"</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">"F19/HUM/AW/clean_data/B2.bam2.bam"</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">"F19/HUM/AW/clean_data/B2.bam3.bam"</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">"F19/HUM/AW/clean_data/B2.bam4.bam"</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">"F19/HUM/AW/clean_data/B2.bam5.bam"</span></span><br><span class="line"><span class="attr">Outputs:</span></span><br><span class="line">  <span class="attr">storedata:</span></span><br><span class="line">    <span class="attr">data:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">"F19/HUM/AW/clean_data/B2.fq.clean.check"</span></span><br></pre></td></tr></table></figure>
+
+<p>观察输出规则，不难得出以下映射规则</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">Outputs.loaddata_fq.data.$0.name = "&#123;&#123;project_id&#125;&#125;/&#123;&#123;subproject_id&#125;&#125;/&#123;&#123;sample_id&#125;&#125;/clean_data/&#123;&#123;lane_id&#125;&#125;.fq.clean.check"</span><br><span class="line"></span><br><span class="line">Inputs.loaddata_fq.data.$0.name = "&#123;&#123;project_id&#125;&#125;/&#123;&#123;subproject_id&#125;&#125;/&#123;&#123;sample_id&#125;&#125;/clean_data/&#123;&#123;lane_id&#125;&#125;.fq.gz"</span><br><span class="line"></span><br><span class="line">Inputs.loaddata_fq.data.$0.name = "&#123;&#123;project_id&#125;&#125;/&#123;&#123;subproject_id&#125;&#125;/&#123;&#123;sample_id&#125;&#125;/clean_data/&#123;&#123;lane_id&#125;&#125;.bam0.bam"</span><br><span class="line">Inputs.loaddata_fq.data.$1.name = "&#123;&#123;project_id&#125;&#125;/&#123;&#123;subproject_id&#125;&#125;/&#123;&#123;sample_id&#125;&#125;/clean_data/&#123;&#123;lane_id&#125;&#125;.bam1.bam"</span><br><span class="line">Inputs.loaddata_fq.data.$2.name = "&#123;&#123;project_id&#125;&#125;/&#123;&#123;subproject_id&#125;&#125;/&#123;&#123;sample_id&#125;&#125;/clean_data/&#123;&#123;lane_id&#125;&#125;.bam2.bam"</span><br><span class="line">Inputs.loaddata_fq.data.$3.name = "&#123;&#123;project_id&#125;&#125;/&#123;&#123;subproject_id&#125;&#125;/&#123;&#123;sample_id&#125;&#125;/clean_data/&#123;&#123;lane_id&#125;&#125;.bam3.bam"</span><br><span class="line">Inputs.loaddata_fq.data.$4.name = "&#123;&#123;project_id&#125;&#125;/&#123;&#123;subproject_id&#125;&#125;/&#123;&#123;sample_id&#125;&#125;/clean_data/&#123;&#123;lane_id&#125;&#125;.bam4.bam"</span><br></pre></td></tr></table></figure>
+
+<p>但是 <code>loaddata_bam</code>参数的映射如果需要手写那太痛苦了，假设有100个bam的输入，我们就得写100条映射规则，这显然不是我们想看到的。<br>没有什么是一条<code>for</code>循环不能解决的，如果有，就加个<code>if</code>（呸）。这个时候模板语言就派上用场了，我马上联想到其它模块中用到的<a href="http://docs.jinkan.org/docs/jinja2/templates.html" target="_blank" rel="noopener">Jinja</a>模板，不但能够将参数渲染到文件中，还能解决动态生成规则的问题：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">Outputs.loaddata_fq.data.$0.name = "&#123;&#123;project_id&#125;&#125;/&#123;&#123;subproject_id&#125;&#125;/&#123;&#123;sample_id&#125;&#125;/clean_data/&#123;&#123;lane_id&#125;&#125;.fq.clean.check"</span><br><span class="line"></span><br><span class="line">Inputs.loaddata_fq.data.$0.name = "&#123;&#123;project_id&#125;&#125;/&#123;&#123;subproject_id&#125;&#125;/&#123;&#123;sample_id&#125;&#125;/clean_data/&#123;&#123;lane_id&#125;&#125;.fq.gz"</span><br><span class="line">&#123;% for n in range(5)  %&#125;</span><br><span class="line">Inputs.loaddata_fq.data.$&#123;&#123;n&#125;&#125;.name = "&#123;&#123;project_id&#125;&#125;/&#123;&#123;subproject_id&#125;&#125;/&#123;&#123;sample_id&#125;&#125;/clean_data/&#123;&#123;lane_id&#125;&#125;.bam&#123;&#123;n&#125;&#125;.bam"</span><br><span class="line">&#123;% endfor %&#125;</span><br></pre></td></tr></table></figure>
+
+<p>如此便解决了动态生成规则的问题，这样就将属性值的生成规则抽离到配置文件中。通过Jinja模板渲染后，就可以得到完整的<code>键-值</code>映射关系，剩下的通过<code>Key Name</code>找到指定的属性就不是什么难事了。</p>
+<h3 id="使用宏定义更高级的生成规则"><a href="#使用宏定义更高级的生成规则" class="headerlink" title="使用宏定义更高级的生成规则"></a>使用宏定义更高级的生成规则</h3><p>不仅仅是前面示例中的列表生成，我们甚至可以通过宏定义更复杂的规则：</p>
+<ol>
+<li>声明宏：根据lane_id生成对象</li>
+</ol>
+<figure class="highlight jinja"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="template-tag">&#123;%<span class="name">macro</span> _loadbamData(lane_id, prefix, pos) -%&#125;</span></span><br><span class="line"><span class="xml">&#123;"enid": null, "name": "</span><span class="template-variable">&#123;&#123;cloud_out_dir&#125;&#125;</span><span class="xml">/tmp/fq_bam/</span><span class="template-variable">&#123;&#123;sample_id&#125;&#125;</span><span class="xml">/</span><span class="template-variable">&#123;&#123;lane_id&#125;&#125;</span><span class="xml">/</span><span class="template-variable">&#123;&#123;lane_id&#125;&#125;</span><span class="xml">.</span><span class="template-variable">&#123;&#123;prefix&#125;&#125;</span><span class="template-variable">&#123;&#123;pos&#125;&#125;</span><span class="xml">.bam", "property": &#123;"block_file": &#123;"block_name": null, "is_block": false, "split_format": "default"&#125;&#125; &#125;</span></span><br><span class="line"><span class="template-tag">&#123;%- <span class="name">endmacro</span> %&#125;</span></span><br></pre></td></tr></table></figure>
+
+<ol start="2">
+<li>声明宏：根据坐标生成<code>loadnode_bam&lt;pos&gt;</code>的值，比如loadnode_bamY</li>
+</ol>
+<figure class="highlight jinja"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="template-tag">&#123;% <span class="name">macro</span> loadbamList(prefix, pos) -%&#125;</span></span><br><span class="line"><span class="xml">[</span><span class="template-tag">&#123;%<span class="name"><span class="name">for</span></span> lane_id <span class="keyword">in</span> lane_id_list -%&#125;</span></span><br><span class="line"><span class="template-variable">&#123;&#123;_loadbamData(lane_id, prefix, pos)&#125;&#125;</span><span class="xml"> </span><span class="template-tag">&#123;%-<span class="name"><span class="name">if</span></span> not loop.last%&#125;</span><span class="xml">, </span><span class="template-tag">&#123;%<span class="name"><span class="name">endif</span></span>-%&#125;</span></span><br><span class="line"><span class="template-tag">&#123;%-<span class="name"><span class="name">endfor</span></span>%&#125;</span><span class="xml">]</span></span><br><span class="line"><span class="template-tag">&#123;%- <span class="name">endmacro</span>%&#125;</span></span><br></pre></td></tr></table></figure>
+
+<ol start="3">
+<li>通过调用生成<code>loaddata_node_bam1</code> 到 <code>loaddata_node_bam22</code></li>
+</ol>
+<figure class="highlight jinja"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="template-tag">&#123;%-<span class="name"><span class="name">for</span></span> index <span class="keyword">in</span> range(1, 23) -%&#125;</span></span><br><span class="line"><span class="xml">loaddata_node_bam</span><span class="template-variable">&#123;&#123;index&#125;&#125;</span><span class="xml">.data = </span><span class="template-variable">&#123;&#123; loadbamList('bam', index)&#125;&#125;</span></span><br><span class="line"><span class="template-tag">&#123;%<span class="name"><span class="name">endfor</span></span>-%&#125;</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>更多Jinja模板的语法请参考<a href="http://docs.jinkan.org/docs/jinja2/templates.html" target="_blank" rel="noopener">文档</a></p>
+</blockquote>
+<h2 id="映射文件的管理、解析，渲染到yml文件"><a href="#映射文件的管理、解析，渲染到yml文件" class="headerlink" title="映射文件的管理、解析，渲染到yml文件"></a>映射文件的管理、解析，渲染到yml文件</h2><p>我们回顾一下参数映射的大体思路：</p>
+<ol>
+<li>将yml文件中的属性转为二维结构</li>
+<li>使用Jinja模板填充各个属性的映射规则</li>
+<li>如果有动态生成规则，使用”宏”</li>
+</ol>
+<p>作为一个程序员，多多少少都有点代码洁癖，如果各种宏定义和键值映射的声明混在一起，一定非常难受；而且参数直接写在键值映射中，没有在一个地方统一声明，可能不便维护，既然已经抽离出一个独立的映射配置，那么就进一步完善一下，将其声明为一个伪<code>ini</code>文件(使用<code>ini</code>配置只是一种方案，我们只要利用Jinja渲染后的输出文件消除了宏定义和Jinja模板的特性，可以利用任意想要的中间配置输出)</p>
+<h3 id="映射管理"><a href="#映射管理" class="headerlink" title="映射管理"></a>映射管理</h3><h4 id="DECLARE"><a href="#DECLARE" class="headerlink" title="DECLARE"></a>DECLARE</h4><p>在<code>DECLARE</code>下声明参数，为处理程序提前获知合法参数留入口</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">[DECLARE]</span></span><br><span class="line"><span class="comment">; 这里声明参数</span></span><br><span class="line"><span class="attr">project_id</span> = &#123;&#123;project_id&#125;&#125;</span><br><span class="line"><span class="attr">subproject_id</span> = &#123;&#123;subproject_id&#125;&#125;</span><br><span class="line"><span class="attr">sample_id</span> = &#123;&#123;sample_id&#125;&#125;</span><br><span class="line"><span class="attr">cloud_out_dir</span> =&#123;&#123;cloud_out_dir&#125;&#125;</span><br><span class="line"><span class="attr">lane_id_list</span> = &#123;&#123;lane_id_list&#125;&#125;</span><br><span class="line"><span class="attr">reference_buildversion</span> = &#123;&#123;reference_buildversion&#125;&#125;</span><br><span class="line"><span class="attr">date</span> = &#123;&#123;date&#125;&#125;</span><br><span class="line"><span class="attr">task_name</span> = &#123;&#123;task_name&#125;&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="MAPPING"><a href="#MAPPING" class="headerlink" title="MAPPING"></a>MAPPING</h4><p>在<code>MAPPING</code>下声明映射，如有动态的生成规则，尽量使用宏的调用来，不直接在这里定义宏</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">[MAPPING]</span></span><br><span class="line">Outputs.loaddata_fq.data.$0.name = "&#123;&#123;project_id&#125;&#125;/&#123;&#123;subproject_id&#125;&#125;/&#123;&#123;sample_id&#125;&#125;/clean_data/&#123;&#123;lane_id&#125;&#125;.fq.clean.check"</span><br><span class="line">Inputs.loaddata_fq.data.$0.name = "&#123;&#123;project_id&#125;&#125;/&#123;&#123;subproject_id&#125;&#125;/&#123;&#123;sample_id&#125;&#125;/clean_data/&#123;&#123;lane_id&#125;&#125;.fq.gz"</span><br><span class="line"></span><br><span class="line">&#123;% for n in range(5)  %&#125;</span><br><span class="line">Inputs.loaddata_fq.data.$&#123;&#123;n&#125;&#125;.name = "&#123;&#123;project_id&#125;&#125;/&#123;&#123;subproject_id&#125;&#125;/&#123;&#123;sample_id&#125;&#125;/clean_data/&#123;&#123;lane_id&#125;&#125;.bam&#123;&#123;n&#125;&#125;.bam"</span><br><span class="line">&#123;% endfor %&#125;</span><br><span class="line"></span><br><span class="line">&#123;%-for index in range(1, 23) -%&#125;</span><br><span class="line">loaddata_node_bam&#123;&#123;index&#125;&#125;.data = &#123;&#123; loadbamList('bam', index)&#125;&#125;</span><br><span class="line">&#123;%endfor-%&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="MACROS"><a href="#MACROS" class="headerlink" title="MACROS"></a>MACROS</h4><p>将宏定义在<code>MACROS</code>下，避免与参数、映射的声明混在一起</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">[MACROS]</span></span><br><span class="line"></span><br><span class="line">&#123;%macro _loadbamData(lane_id, prefix, pos) -%&#125;</span><br><span class="line">&#123;"enid": null, "name": "&#123;&#123;cloud_out_dir&#125;&#125;/tmp/fq_bam/&#123;&#123;sample_id&#125;&#125;/&#123;&#123;lane_id&#125;&#125;/&#123;&#123;lane_id&#125;&#125;.&#123;&#123;prefix&#125;&#125;&#123;&#123;pos&#125;&#125;.bam", "property": &#123;"block_file": &#123;"block_name": null, "is_block": false, "split_format": "default"&#125;&#125; &#125;</span><br><span class="line">&#123;%- endmacro %&#125;</span><br><span class="line"></span><br><span class="line">&#123;% macro loadbamList(prefix, pos) -%&#125;</span><br><span class="line"><span class="section">[&#123;%for lane_id in lane_id_list -%&#125;</span></span><br><span class="line"><span class="section">&#123;&#123;_loadbamData(lane_id, prefix, pos)&#125;&#125; &#123;%-if not loop.last%&#125;, &#123;%endif-%&#125;</span></span><br><span class="line"><span class="section">&#123;%-endfor%&#125;]</span></span><br><span class="line">&#123;%- endmacro%&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="映射解析"><a href="#映射解析" class="headerlink" title="映射解析"></a>映射解析</h3><p>当定义好一个映射模板后，我们只须以下三步就能完成最终的yaml文件输出：</p>
+<ol>
+<li>通过使用Jinja渲染，映射文件。就像前面我们准备的那样，我们可以在渲染参数后得到一个<code>ini</code>配置文件</li>
+<li>解析渲染后的<code>ini</code>配置，从中获取键值映射</li>
+<li>读取yaml样板，通过<code>Key Name</code>找到yaml对象中的属性并赋值</li>
+</ol>
+<p>当然这里面一定会碰到一些其它的问题，比如像我说的那样使用<code>ini</code>配置就会碰到映射类型的问题（如何区分<code>str</code>和<code>number</code>），还有如何区分空字符串<code>&quot;&quot;</code>和和<code>null</code>的问题。当然这些都是实现上的一些细节，通过编码和中间配置的选择就能处理，我这里也只是简单谈谈我是“如何将大象装进冰箱里的”。</p>
+<blockquote>
+<p>另外，如果想知道我的具体实现代码，可以参考这个工具 <a href="https://pypi.org/project/gparams/" target="_blank" rel="noopener"><code>gparams</code></a>，这是我为了解决前方提到的问题开发的python库。当然这个并不是完全通用的，里面结合实际的业务特点做了一些定制</p>
+</blockquote>
+<blockquote>
+<p>关于Jinja模板对语言支持的问题，Java也有相关的工具库用于处理渲染： <a href="https://github.com/HubSpot/jinjava" target="_blank" rel="noopener">Jinjava</a>，当然我们也是可以选择其它模板语言的</p>
+</blockquote>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:  </strong>木陽
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link: </strong>
+    <a href="http://atomicer.cn/2019/06/05/%E4%BD%BF%E7%94%A8Jinja%E5%8A%A8%E6%80%81%E6%B8%B2%E6%9F%93Yaml%E6%96%87%E4%BB%B6%E7%9A%84%E6%96%B9%E6%A1%88/" title="动态渲染Yaml文件（使用 模板映射 + Jinja2 方案）">http://atomicer.cn/2019/06/05/使用Jinja动态渲染Yaml文件的方案/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" rel="noopener" target="_blank"><i class="fa fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/yml/" rel="tag"><i class="fa fa-tag"></i> yml</a>
+              <a href="/tags/Jinja2/" rel="tag"><i class="fa fa-tag"></i> Jinja2</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2019/05/17/etcd-raft%E4%B8%ADraft%E7%AE%97%E6%B3%95%E7%9A%84%E5%AE%9E%E7%8E%B0%E6%80%9D%E8%B7%AF%E5%8F%82%E8%80%83/" rel="prev" title="Raft算法及etcd/raft的实现思路借鉴">
+      <i class="fa fa-chevron-left"></i> Raft算法及etcd/raft的实现思路借鉴
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2019/08/31/dag-in-action/" rel="next" title="DAG在实际生产中的应用">
+      DAG在实际生产中的应用 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#二维结构的转换"><span class="nav-number">1.</span> <span class="nav-text">二维结构的转换</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参数与属性的映射"><span class="nav-number">2.</span> <span class="nav-text">参数与属性的映射</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#使用宏定义更高级的生成规则"><span class="nav-number">2.1.</span> <span class="nav-text">使用宏定义更高级的生成规则</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#映射文件的管理、解析，渲染到yml文件"><span class="nav-number">3.</span> <span class="nav-text">映射文件的管理、解析，渲染到yml文件</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#映射管理"><span class="nav-number">3.1.</span> <span class="nav-text">映射管理</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#DECLARE"><span class="nav-number">3.1.1.</span> <span class="nav-text">DECLARE</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#MAPPING"><span class="nav-number">3.1.2.</span> <span class="nav-text">MAPPING</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#MACROS"><span class="nav-number">3.1.3.</span> <span class="nav-text">MACROS</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#映射解析"><span class="nav-number">3.2.</span> <span class="nav-text">映射解析</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="木陽"
+      src="/mine.jpg">
+  <p class="site-author-name" itemprop="name">木陽</p>
+  <div class="site-description" itemprop="description">木之陽兮  卿云烂兮</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">32</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">16</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">50</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/raomuyang" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;raomuyang" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="http://mail.qq.com/cgi-bin/qm_share?t=qm_mailme&email=RzUmKCoiKSApJikHISg-KiYuK2kkKCo" title="E-Mail → http:&#x2F;&#x2F;mail.qq.com&#x2F;cgi-bin&#x2F;qm_share?t&#x3D;qm_mailme&amp;email&#x3D;RzUmKCoiKSApJikHISg-KiYuK2kkKCo" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="/atom.xml" title="RSS → &#x2F;atom.xml"><i class="fa fa-fw fa-rss"></i>RSS</a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+  <div class="beian"><a href="http://www.beian.miit.gov.cn/" rel="noopener" target="_blank">赣ICP备16004083号 </a>
+  </div>
+
+<div class="copyright">
+  
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">木陽  使用<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">(CC) BY-NC-SA</a> 许可发布</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+  <script>
+    (function(){
+      var bp = document.createElement('script');
+      var curProtocol = window.location.protocol.split(':')[0];
+      bp.src = (curProtocol === 'https') ? 'https://zz.bdstatic.com/linksubmit/push.js' : 'http://push.zhanzhang.baidu.com/push.js';
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(bp, s);
+    })();
+  </script>
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

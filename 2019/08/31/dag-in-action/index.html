@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon.png">
+  <link rel="mask-icon" href="/favicon.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://atomicer.cn').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="DAG与拓扑排序的应用在普通的程序设计中，当一个或一批事件完成时触发下一个或下一批事件的开始，通常我们会设计一个“围栏”，使用观察者模式或监听器模式对事件进行回调、观察并控制围栏的开关（比如java中用到的CountDownLatch），当事件越来越多、触发条件越来越复杂的时候，这种模式就愈发显得力有不逮，特别是在并发控制的表现中。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="DAG在实际生产中的应用">
+<meta property="og:url" content="http://atomicer.cn/2019/08/31/dag-in-action/index.html">
+<meta property="og:site_name" content="木陽">
+<meta property="og:description" content="DAG与拓扑排序的应用在普通的程序设计中，当一个或一批事件完成时触发下一个或下一批事件的开始，通常我们会设计一个“围栏”，使用观察者模式或监听器模式对事件进行回调、观察并控制围栏的开关（比如java中用到的CountDownLatch），当事件越来越多、触发条件越来越复杂的时候，这种模式就愈发显得力有不逮，特别是在并发控制的表现中。">
+<meta property="og:image" content="https://raw.githubusercontent.com/raomuyang/flowon/master/doc/%E7%9B%91%E5%90%AC-%E8%A7%82%E5%AF%9F%E6%A8%A1%E5%9E%8B.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/raomuyang/flowon/master/doc/%E5%88%86%E6%9E%90%E6%B5%81%E7%A8%8BDemo.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/raomuyang/flowon/master/doc/Map%E5%92%8CReduce.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/raomuyang/flowon/master/doc/%E4%B8%8B%E8%BD%BD-%E5%88%86%E6%9E%90.png">
+<meta property="article:published_time" content="2019-08-31T17:52:25.000Z">
+<meta property="article:modified_time" content="2020-05-30T09:25:26.300Z">
+<meta property="article:author" content="木陽">
+<meta property="article:tag" content="DAG">
+<meta property="article:tag" content="AOV-NET">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/raomuyang/flowon/master/doc/%E7%9B%91%E5%90%AC-%E8%A7%82%E5%AF%9F%E6%A8%A1%E5%9E%8B.png">
+
+<link rel="canonical" href="http://atomicer.cn/2019/08/31/dag-in-action/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>DAG在实际生产中的应用 | 木陽</title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-82755477-1"></script>
+    <script>
+      if (CONFIG.hostname === location.hostname) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-82755477-1');
+      }
+    </script>
+
+
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?28428a78c9ad21d09428f89378d9c50b";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">木陽</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <h1 class="site-subtitle" itemprop="description">木之陽兮  卿云烂兮</h1>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>Categories</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>Search
+        </a>
+      </li>
+  </ul>
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="none"
+           placeholder="Searching..." spellcheck="false"
+           type="text" id="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="http://atomicer.cn/2019/08/31/dag-in-action/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/mine.jpg">
+      <meta itemprop="name" content="木陽">
+      <meta itemprop="description" content="木之陽兮  卿云烂兮">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="木陽">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          DAG在实际生产中的应用
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2019-08-31 17:52:25" itemprop="dateCreated datePublished" datetime="2019-08-31T17:52:25+00:00">2019-08-31</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="DAG与拓扑排序的应用"><a href="#DAG与拓扑排序的应用" class="headerlink" title="DAG与拓扑排序的应用"></a>DAG与拓扑排序的应用</h2><p>在普通的程序设计中，当一个或一批事件完成时触发下一个或下一批事件的开始，通常我们会设计一个“围栏”，使用观察者模式或监听器模式对事件进行回调、观察并控制围栏的开关（比如java中用到的<code>CountDownLatch</code>），当事件越来越多、触发条件越来越复杂的时候，这种模式就愈发显得力有不逮，特别是在并发控制的表现中。</p>
+<a id="more"></a>
+
+<p><img src="https://raw.githubusercontent.com/raomuyang/flowon/master/doc/%E7%9B%91%E5%90%AC-%E8%A7%82%E5%AF%9F%E6%A8%A1%E5%9E%8B.png" alt="监听-观察模型"></p>
+<p>比如下图是一个生信分析流程的Demo，如果使用回调的方式处理任务之间的触发条件，一旦中间某个步骤出错，都有可能成为难以恢复的灾难：<br><img src="https://raw.githubusercontent.com/raomuyang/flowon/master/doc/%E5%88%86%E6%9E%90%E6%B5%81%E7%A8%8BDemo.png" alt="生信分析中的分析流程Demo"></p>
+<p>当事件之间的触发条件复杂到一定程度时，就应该转换一下思路：使用有向无环图描述这个流程中多个事件/任务之间的依赖关系。顶点表示活动、弧边表示依赖，这些活动所构成的即为AOV-网。DAG在工作流引擎/计算框架等实际生产中有广泛的应用，如阿里云的批量计算框架，不过从阿里云Diku的使用的是带权的有向无环图。</p>
+<p>使用AOV-网明清晰表示了整个流程的处理路径和依赖关系，并且可以协助完成复杂的并发控制。按照依赖的顺序，并行地完成AOV-网中所有的活动便简化为对AOV-网的拓扑排序结果的动态演绎：</p>
+<ol>
+<li>对AOV-网中所有的顶点拓扑排序</li>
+<li><code>控制器</code>按照拓扑排序中的路径获取所有可活动的顶点：将所有<code>完成</code>的顶点删除，依次遍历并过滤出无前驱的顶点</li>
+<li><code>调度器</code>不断刷新获取当前有可活动的顶点，处理顶点活动并将其标记为<code>完成</code>，直到DAG中所有的顶点都处理完成。</li>
+</ol>
+<p>在这个处理过程中，顶点的处理顺序一定是一个拓扑有序序列。并且问题转化为了更简单的<code>生产-消费</code>模式:</p>
+<p>  调度器和控制器分别为消费者和生产者，调度器只需要关注哪些任务可以调度并及时更新顶点活动状态，控制器则只需根据当前的顶点状态返回当前“入度为0”的顶点</p>
+<h2 id="参数处理：Map-amp-Reduce"><a href="#参数处理：Map-amp-Reduce" class="headerlink" title="参数处理：Map &amp; Reduce"></a>参数处理：Map &amp; Reduce</h2><blockquote>
+<p>TL;DR 本节为参数渲染为DAG的处理思考过程的总结</p>
+</blockquote>
+<p>参数的转换是亘古不变的话题，如何简洁地将输入数据转换为一系列活动顶点构成的AOV-网又保证灵活性是需要尝试去抽象的：</p>
+<p><img src="https://raw.githubusercontent.com/raomuyang/flowon/master/doc/Map%E5%92%8CReduce.png" alt="Parameters mapper"></p>
+<p>如果展开处理的话，解析的过程一定繁杂无比。针对生产中的任务类型和输入数据的观察，我对可处理的输入数据和活动类型做了如下限定：</p>
+<ul>
+<li>我们视该输入数据(InputData)为一组资源ID（<code>resourceID</code>）构成的资源集合<code>R</code>，资源按照作用域类型<code>scope</code>分组，不同的作用域<code>scope</code>之间存在”包含“、“被包含”、“平级”等关系。</li>
+<li>定义一种映射关系<code>M</code>将资源<code>R</code>转换为顶点的集合<code>V</code>: <code>V = R x M</code></li>
+<li>当前一个顶点所依赖的邻接顶点必须为同一种活动类型（当然从通用的角度看这是不合理的，可以改进）</li>
+</ul>
+<p>为了明确顶点之间的依赖关系，定义顶点配置模板的元素如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">&lt;活动类型&gt; &#123;</span><br><span class="line">    scope &#x3D; &lt;作用域&gt;</span><br><span class="line">    dependencies &#x3D; &lt;依赖的活动类型&gt;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>将输入数据解析为DAG的步骤如下：</p>
+<ol>
+<li>输入数据 -&gt; 资源ID集合</li>
+<li>Map: 迭代conf中的顶点配置模板，针对每个顶点配置模板，从资源集合中过滤出作用域等级为指定 <code>scope</code> 的资源ID列表，转换为顶点列表。</li>
+<li>Reduce: 合并顶点列表，通过顶点中的<code>dependencies</code>属性和<code>resourceURI</code>之间的包含关系判断顶点是否为邻接顶点，构造DAG。顶点A依赖顶点B且顶点A的资源ID作用域包含顶点B的资源ID作用域时，则认为B到A存在弧边，依据资源ID和依赖的顶点类型的判断是否为邻接顶点的实现逻辑如下：</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (Vertex v1 : vertexNodes) &#123;</span><br><span class="line">    ArcNode arc = <span class="keyword">null</span>;</span><br><span class="line">    <span class="keyword">for</span> (Vertex v2 : vertexNodes) &#123;</span><br><span class="line">        <span class="keyword">if</span> (v1.getIndex() == v2.getIndex()) <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// action: v2 dependency v1; resource: dataURI_v1 is subset of dataURI_v2</span></span><br><span class="line">        <span class="keyword">if</span> (v1.getAction().equals(v2.getDependenciesNodeName())</span><br><span class="line">                &amp;&amp; scopes.isInclude(v2.getBindDataURI(), v1.getBindDataURI(), v2.getDependenciesNodeName())) &#123;</span><br><span class="line">            ArcNode arcV1ToV2 = <span class="keyword">new</span> ArcNode(v2.getIndex(), <span class="keyword">null</span>);</span><br><span class="line">            <span class="keyword">if</span> (arc == <span class="keyword">null</span>) &#123;</span><br><span class="line">                arc = arcV1ToV2;</span><br><span class="line">                v1.setFirstArc(arc);</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                arc.setNextArc(arcV1ToV2);</span><br><span class="line">                arc = arcV1ToV2;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="Demo"><a href="#Demo" class="headerlink" title="Demo"></a>Demo</h3><p>输入数据 ：</p>
+<blockquote>
+<p>资源作用域类型：file, group, project</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th align="center">file id</th>
+<th align="center">group id</th>
+<th align="center">project id</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">f1</td>
+<td align="center">g1</td>
+<td align="center">p1</td>
+</tr>
+<tr>
+<td align="center">f2</td>
+<td align="center">g1</td>
+<td align="center">p1</td>
+</tr>
+<tr>
+<td align="center">f3</td>
+<td align="center">g2</td>
+<td align="center">p1</td>
+</tr>
+<tr>
+<td align="center">f4</td>
+<td align="center">g2</td>
+<td align="center">p1</td>
+</tr>
+</tbody></table>
+<p>处理流程：</p>
+<p><img src="https://raw.githubusercontent.com/raomuyang/flowon/master/doc/%E4%B8%8B%E8%BD%BD-%E5%88%86%E6%9E%90.png" alt="下载-分析"></p>
+<p>定义流程模板如下（使用HOCON配置）</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">&#x2F;&#x2F; download by file</span><br><span class="line">download &#123;</span><br><span class="line">  scope &#x3D; file</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; mapping by group, a group include one or may file(s)</span><br><span class="line">mapping &#123;</span><br><span class="line">  scope &#x3D; group</span><br><span class="line">  dependencies &#x3D; download  &#x2F;&#x2F; the files of group download finished then start mapping task</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; analysis by project</span><br><span class="line">analysis &#123;</span><br><span class="line">  scope &#x3D; project</span><br><span class="line">  dependencies &#x3D; mapping  &#x2F;&#x2F; the mapping tasks of group finished then start the analysis task of project</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>配置的解析渲染过程，在flowon中已经实现，可以参考项目中的示例代码： <a href="https://github.com/raomuyang/flowon/tree/master/src/demo" target="_blank" rel="noopener">demo</a></p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:  </strong>木陽
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link: </strong>
+    <a href="http://atomicer.cn/2019/08/31/dag-in-action/" title="DAG在实际生产中的应用">http://atomicer.cn/2019/08/31/dag-in-action/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" rel="noopener" target="_blank"><i class="fa fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/DAG/" rel="tag"><i class="fa fa-tag"></i> DAG</a>
+              <a href="/tags/AOV-NET/" rel="tag"><i class="fa fa-tag"></i> AOV-NET</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2019/06/05/%E4%BD%BF%E7%94%A8Jinja%E5%8A%A8%E6%80%81%E6%B8%B2%E6%9F%93Yaml%E6%96%87%E4%BB%B6%E7%9A%84%E6%96%B9%E6%A1%88/" rel="prev" title="动态渲染Yaml文件（使用 模板映射 + Jinja2 方案）">
+      <i class="fa fa-chevron-left"></i> 动态渲染Yaml文件（使用 模板映射 + Jinja2 方案）
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/05/20/%E4%BD%BF%E7%94%A8Flask%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E4%BB%A3%E7%90%86%E7%BD%91%E5%85%B3/" rel="next" title="使用Flask手写一个代理网关">
+      使用Flask手写一个代理网关 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#DAG与拓扑排序的应用"><span class="nav-number">1.</span> <span class="nav-text">DAG与拓扑排序的应用</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参数处理：Map-amp-Reduce"><span class="nav-number">2.</span> <span class="nav-text">参数处理：Map &amp; Reduce</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Demo"><span class="nav-number">2.1.</span> <span class="nav-text">Demo</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="木陽"
+      src="/mine.jpg">
+  <p class="site-author-name" itemprop="name">木陽</p>
+  <div class="site-description" itemprop="description">木之陽兮  卿云烂兮</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">32</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">16</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">50</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/raomuyang" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;raomuyang" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="http://mail.qq.com/cgi-bin/qm_share?t=qm_mailme&email=RzUmKCoiKSApJikHISg-KiYuK2kkKCo" title="E-Mail → http:&#x2F;&#x2F;mail.qq.com&#x2F;cgi-bin&#x2F;qm_share?t&#x3D;qm_mailme&amp;email&#x3D;RzUmKCoiKSApJikHISg-KiYuK2kkKCo" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="/atom.xml" title="RSS → &#x2F;atom.xml"><i class="fa fa-fw fa-rss"></i>RSS</a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+  <div class="beian"><a href="http://www.beian.miit.gov.cn/" rel="noopener" target="_blank">赣ICP备16004083号 </a>
+  </div>
+
+<div class="copyright">
+  
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">木陽  使用<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">(CC) BY-NC-SA</a> 许可发布</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+  <script>
+    (function(){
+      var bp = document.createElement('script');
+      var curProtocol = window.location.protocol.split(':')[0];
+      bp.src = (curProtocol === 'https') ? 'https://zz.bdstatic.com/linksubmit/push.js' : 'http://push.zhanzhang.baidu.com/push.js';
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(bp, s);
+    })();
+  </script>
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

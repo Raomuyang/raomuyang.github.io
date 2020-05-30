@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon.png">
+  <link rel="mask-icon" href="/favicon.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://atomicer.cn').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="ActiveMQ、RabbitMQ、Kafka等都是大家耳熟能详的消息队列，了解消息队列的原理，我们也可以尝试构建一个自己的消息队列。 从消息队列的功能上思考 - 生产者创建一条消息流，通过http或tcp协议传输到消息队列中；消息队列对数据流进行处理，在适当的时机发送给合适的消费者；消费者接收处理消息后，将处理结果反馈给消息队列服务。简而言之，消息队列作为中间人，为生产者和消费者架起数据流传输的">
+<meta property="og:type" content="article">
+<meta property="og:title" content="消息队列设计思路">
+<meta property="og:url" content="http://atomicer.cn/2017/12/26/%E8%AE%BE%E8%AE%A1%E4%B8%80%E4%B8%AA%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/index.html">
+<meta property="og:site_name" content="木陽">
+<meta property="og:description" content="ActiveMQ、RabbitMQ、Kafka等都是大家耳熟能详的消息队列，了解消息队列的原理，我们也可以尝试构建一个自己的消息队列。 从消息队列的功能上思考 - 生产者创建一条消息流，通过http或tcp协议传输到消息队列中；消息队列对数据流进行处理，在适当的时机发送给合适的消费者；消费者接收处理消息后，将处理结果反馈给消息队列服务。简而言之，消息队列作为中间人，为生产者和消费者架起数据流传输的">
+<meta property="og:image" content="http://cloud.atomicer.cn/blog-img/msg-queue/message-queue-modules.png">
+<meta property="og:image" content="http://cloud.atomicer.cn/blog-img/msg-queue/message-queue-head.png">
+<meta property="og:image" content="http://cloud.atomicer.cn/blog-img/msg-queue/message-queue-timesequence.png">
+<meta property="og:image" content="http://cloud.atomicer.cn/blog-img/msg-queue/message-queue-channels.png">
+<meta property="article:published_time" content="2017-12-26T17:59:41.000Z">
+<meta property="article:modified_time" content="2020-05-30T09:25:26.300Z">
+<meta property="article:author" content="木陽">
+<meta property="article:tag" content="Message-Queue">
+<meta property="article:tag" content="消息队列">
+<meta property="article:tag" content="golang">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://cloud.atomicer.cn/blog-img/msg-queue/message-queue-modules.png">
+
+<link rel="canonical" href="http://atomicer.cn/2017/12/26/%E8%AE%BE%E8%AE%A1%E4%B8%80%E4%B8%AA%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>消息队列设计思路 | 木陽</title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-82755477-1"></script>
+    <script>
+      if (CONFIG.hostname === location.hostname) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-82755477-1');
+      }
+    </script>
+
+
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?28428a78c9ad21d09428f89378d9c50b";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">木陽</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <h1 class="site-subtitle" itemprop="description">木之陽兮  卿云烂兮</h1>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>Categories</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>Search
+        </a>
+      </li>
+  </ul>
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="none"
+           placeholder="Searching..." spellcheck="false"
+           type="text" id="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="http://atomicer.cn/2017/12/26/%E8%AE%BE%E8%AE%A1%E4%B8%80%E4%B8%AA%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/mine.jpg">
+      <meta itemprop="name" content="木陽">
+      <meta itemprop="description" content="木之陽兮  卿云烂兮">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="木陽">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          消息队列设计思路
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2017-12-26 17:59:41" itemprop="dateCreated datePublished" datetime="2017-12-26T17:59:41+00:00">2017-12-26</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/golang/" itemprop="url" rel="index">
+                    <span itemprop="name">golang</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/golang/%E7%B3%BB%E7%BB%9F%E8%AE%BE%E8%AE%A1/" itemprop="url" rel="index">
+                    <span itemprop="name">系统设计</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>ActiveMQ、RabbitMQ、Kafka等都是大家耳熟能详的消息队列，了解消息队列的原理，我们也可以尝试构建一个自己的消息队列。</p>
+<p>从消息队列的功能上思考 - 生产者创建一条消息流，通过http或tcp协议传输到消息队列中；消息队列对数据流进行处理，在适当的时机发送给合适的消费者；消费者接收处理消息后，将处理结果反馈给消息队列服务。简而言之，消息队列作为中间人，为生产者和消费者架起数据流传输的桥梁，使生产者和消费者之间无需关注自己在和谁交换数据，整个过程都是异步的。</p>
+<a id="more"></a>
+
+<p>向后走一步，我们会发现必须面对生产者、消费者、消息队列之间的关系如何管理的问题。在分布式服务中，生产者与消费者之间通常是<code>多对多</code>的关系，为确保消息的正确投递，消息队列可以无需感知生产者的存在，但必须感知消费者的存在，否则生产者必须在每个消息头部附带消费者的地址信息，很大程度地削减了消息队列的作用。</p>
+<p>通过这个场景预设，我们就可以确定一个基本的消息队列需要实现哪些功能：</p>
+<ul>
+<li><code>消息接收</code></li>
+<li><code>消息转发</code></li>
+<li><code>消费者确认</code></li>
+<li><code>消费者注册</code></li>
+</ul>
+<p><img src="http://cloud.atomicer.cn/blog-img/msg-queue/message-queue-modules.png" alt="消息通讯参与者"></p>
+<h2 id="从功能上思考"><a href="#从功能上思考" class="headerlink" title="从功能上思考"></a>从功能上思考</h2><p><img src="http://cloud.atomicer.cn/blog-img/msg-queue/message-queue-head.png" alt="消息队列的功能思考-脑图"></p>
+<h3 id="消息接收、转发与确认"><a href="#消息接收、转发与确认" class="headerlink" title="消息接收、转发与确认"></a>消息接收、转发与确认</h3><p>MQ需要开放一个服务用于接收消息，接收到消息并不会马上转发出去，本地承载消息的堆积、错峰限流以及更多的处理，这才体现出消息队列的作用。在消息的承载堆积上，考虑到持久化和效率，可以选用Redis作为缓存，（许多简易的消息队列甚至可以利用Redis的List实现）。消息队列接收到生产者的消息时，MQ需要知道消息从何而来去往何处、消息内容是否重复，此时就需要统一地包装消息内容。根据实现的不同，消息的格式也不尽相同。</p>
+<p>消息到达MQ时，MQ将其缓存到本地，然后经过处理后，使用队列投递到消费者。在这个过程中，需要思考如何保证消息的唯一性，以及如何确保消息投递给正确的消费者:<br>      1) 消息的唯一性可以通过全局唯一的messageId保证，生成全局唯一的Id有很多方法，比如UUID、ObjectId<br>      2) 消息投递给正确的消费者，需要将消息和消费者关联起来。消息和消费者通过消费者当然可以通过IP地址进行关联（类似RPC的调用），但这样的话在容错和负载均衡上就存在短板，我们可以通过applicationId进行关联，每个消费者注册到不同的application中，消息队列通过消息实体的附带的applicationId将消息转发给不同的消费者</p>
+<p>消息投递给消费者的两种模型分别为pull与push，关于这两种模型，可以通过Git的分支更新理解：<br>      假如你有一个Repository克隆到本地，你想和Server上的代码保持同步，但你又不知道Server上的代码何时更新，你可以通过脚本在固定的周期下拉取远程代码（git pull），比如每隔5分钟更新一次，这就是Pull模型；固定周期地pull，就会造成请求的忙等或更新延迟，你可以通过服务端的钩子(hook)，代码变更时推送(Push)通知及时更新，这种就是Push模型。在消息队列的设计中，多使用的是Push模型，至于满消费造成的消息堆积等问题，就要根据应用场景斟酌了。</p>
+<p>消费者确认是消息队列投递的过程中很重要的一步，因为消息队列必须确保消息的成功落地。当消费者成功地ack，消息队列才能确定消息投递成功，进而将本地的缓存删除。根据消息处理逻辑的不同，消费者处理不同消息所需的时间也不同，所以MQ应当允许消费者主动确认。在这种情况下，我们可以将消息到达消费者的反馈和消息确认的反馈分开，MQ确认消息投递到消费者后，可以先等待一段时间避免消费者确认时频繁建立连接；也可以放心地断开连接等待消费者主动地 ack 或 reject 等动作。</p>
+<h3 id="消费者注册"><a href="#消费者注册" class="headerlink" title="消费者注册"></a>消费者注册</h3><p>就在<em>消息接收和转发</em>中提到的，消费者可以注册到不同的application中，这样消费者之间就通过application产生隔离，并且消息实体中也无需显式地指定目标地址，所有的消费者地址由消息队列管理并定期进行心跳检测。</p>
+<p>消息通讯中，各个参与者交互的时序图如下：</p>
+<p><img src="http://cloud.atomicer.cn/blog-img/msg-queue/message-queue-timesequence.png" alt="消息通讯的时序图"></p>
+<h2 id="设计实现的思路"><a href="#设计实现的思路" class="headerlink" title="设计实现的思路"></a>设计实现的思路</h2><p>设想一个消息发送与转发的过程：当连接建立时，客户端发送给MQ的字节流被解码成消息实体，通过通道传递给正在等待的其它handler处理，当handler处理完成之后，又通过通道传递给下一个handler，这个过程中消息会经历编码、缓存、进入队列、投递给消费者等一系列过程。</p>
+<p>  上述的流程，可以拆分为四个通道分别处理，每个通道独立工作，直到连接关闭或消息队列停止服务：</p>
+<ul>
+<li>消息连接通道： 负责接收生产者、消费者发过来的消息流</li>
+<li>消息解码通道： 负责将消息流解析为格式化的消息实体对象</li>
+<li>消息处理通道： 根据消息类型、消息ID对消息进行处理、并产生一个消息处理结果，比如消息缓存成功、消费者注册成功等</li>
+<li>消息回复通道： 负责将消息处理结果编码，通过相应的通信协议发送（回复）给接收方</li>
+</ul>
+<p><img src="http://cloud.atomicer.cn/blog-img/msg-queue/message-queue-channels.png" alt="消息接收与投递"></p>
+<p>除此之外，我们需要两个独立的worker：</p>
+<ul>
+<li>消息入队列： 将消息（ID）添加到待投递队列中</li>
+<li>消息出队列： 从待投递队列、待重传队列、死信队列中取出消息ID，根据消息状态做投递、添加到重试队列等处理动作</li>
+</ul>
+<h3 id="传输协议与消息格式"><a href="#传输协议与消息格式" class="headerlink" title="传输协议与消息格式"></a>传输协议与消息格式</h3><p>MQ与生产者、消费者之间的通信可以基于TCP协议，由于消息大小不肯能统一，必须解决TCP数据流黏着问题。TCP数据流黏着的一种典型处理办法是使用特殊组发分隔，这里可以模仿HTTP服务的响应头，使用两个换行符<code>\r\n</code>间隔一条参数，参数的key和value之间使用<code>=</code>间隔，使用四个换行<code>\r\n\r\n</code>符间隔一段消息。</p>
+<p>为了完整地包含消息实体所附带的信息，可以定义如下属性作为消息的统一格式：</p>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>类型</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>appid</td>
+<td>string</td>
+<td>应用的ID，SKMQ会根据应用ID将消息投递给不同的消费者</td>
+</tr>
+<tr>
+<td>msgid</td>
+<td>string</td>
+<td>消息ID，必须保证ID的唯一性，SKMQ会过滤重复的消息</td>
+</tr>
+<tr>
+<td>type</td>
+<td>string</td>
+<td>消息类型，生产者发送消息、消息队列投递消息、消费者反馈都会附带相应的消息类型</td>
+</tr>
+<tr>
+<td>content</td>
+<td>byte</td>
+<td>消息内容，SKMQ会将它转发给相应的消费者</td>
+</tr>
+</tbody></table>
+<h4 id="消息的-type-属性"><a href="#消息的-type-属性" class="headerlink" title="消息的 type 属性"></a>消息的 <code>type</code> 属性</h4><p>消息类型包含了生产者生产的消息类型、消费者反馈的消息类型以及消息队列返回的消息类型，以下字段基本可用涵盖所有的消息类型：</p>
+<ul>
+<li><p>topic  生产者要发送的消息类型 - 应用内广播</p>
+</li>
+<li><p>queue  生产中要发送的消息类型 - 点对点单播</p>
+</li>
+<li><p>push MQ推送消息时的默认类型</p>
+</li>
+<li><p>resp MQ所有的返回信息类型均为<code>resp</code>，此时的返回内容为json text，状态包含在返回内容中</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">  <span class="attr">"Status"</span>: <span class="string">"ack | reject | error"</span>,</span><br><span class="line">  <span class="attr">"Content"</span>: <span class="string">"response msg"</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>arrived  MQ投递消息时，消费者在接收到消息时需先发送arrived类型的消息，在确保消息落地时才发送ack消息</p>
+</li>
+<li><p>ack    对消息队列的正常响应信号</p>
+</li>
+<li><p>reject 当消费者无法消费时，发送一个reject消息给消息队列，消息队列收到reject时，会将消息投入到待重传队列重新排队</p>
+</li>
+<li><p>error  消息处理失败的标志，消息同样会进入待重传队列</p>
+</li>
+<li><p>register 注册收件人（消费者），此时消息的content应该为合法的json text，否则无法完成注册。</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    <span class="attr">"id"</span>: <span class="string">"recipient id"</span>,</span><br><span class="line">    <span class="attr">"app_id"</span>: <span class="string">"application id"</span>,</span><br><span class="line">    <span class="attr">"host"</span>: <span class="string">""</span>,</span><br><span class="line">    <span class="attr">"port"</span>:<span class="string">""</span>,</span><br><span class="line">    <span class="attr">"weight"</span>: <span class="number">0</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<h4 id="消息投递与接收"><a href="#消息投递与接收" class="headerlink" title="消息投递与接收"></a>消息投递与接收</h4><ul>
+<li><p>消息投递<br>这里的消息投递时，使用的是Push模型，所以消费者节点需要维持一个开放的侦听端口，随时等候MQ的消息投递。<br>消费者注册、生产者推送消息、消息投递、消费者响应等消息内容，全都是以上述相同的内容编码规则进行传递。</p>
+</li>
+<li><p>ack<br>消息到达消费者节点时，消费者先发送一个<code>arrived</code>类型的消息告知MQ信件已经到达，MQ会等待一段时间，<br>在这段时间内，如果消费者很快完成任务处理，可以立即发送ack响应告知MQ消息已经处理完成；若未完成，<br>MQ会关闭连接，消费者可以随后主动发送ack消息告知MQ消息已处理完成</p>
+</li>
+</ul>
+<figure class="highlight xl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="title">delivery</span>: MQ -&gt;</span> <span class="function"><span class="title">msgid</span>=id_xxx\r\ntype=push\r\ncontent=bytes_xxx\r\n\r\n -&gt;</span> Consumer</span><br><span class="line"></span><br><span class="line">process1:</span><br><span class="line">    MQ -&gt; <span class="function"><span class="title">wait</span> -&gt;</span> C<span class="function"><span class="title">onsumer</span> -&gt;</span> <span class="function"><span class="title">process</span> -&gt;</span> C<span class="function"><span class="title">onsumer</span> -&gt;</span> <span class="function"><span class="title">msgid</span>=id_xxx\r\ntype=ack\r\n\r\n -&gt;</span> MQ</span><br><span class="line">process2:</span><br><span class="line">    <span class="number">1</span>) C<span class="function"><span class="title">onsumer</span> -&gt;</span> <span class="function"><span class="title">process</span>;  MQ -&gt;</span> connection closed;</span><br><span class="line">    <span class="number">2</span>) C<span class="function"><span class="title">onsumer</span> -&gt;</span>  <span class="function"><span class="title">msgid</span>=id_xxx\r\ntype=ack\r\n\r\n -&gt;</span> MQ</span><br></pre></td></tr></table></figure>
+
+
+<h4 id="心跳检测"><a href="#心跳检测" class="headerlink" title="心跳检测"></a>心跳检测</h4><p>为了消息投递的稳定性，MQ会定期监测消费者节点，通过心跳包检查节点是否失联并及时将其标记，不参与下次消息接收，所以消息节点需要开放侦听端口，用于接收和反馈心跳包: 只需在收到内容为 <code>ping\r\n\r\n</code>的数据时，返回一个<code>pong\r\n\r\n</code>的数据包</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">   connect.SetWriteDeadline(time.Now().Add(ConnectTimeOut))</span><br><span class="line">err := SendMessage(connect, []<span class="keyword">byte</span>(PING))</span><br><span class="line"><span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">	<span class="keyword">return</span> <span class="literal">false</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">buf := <span class="built_in">make</span>([]<span class="keyword">byte</span>, <span class="number">10</span>)</span><br><span class="line">connect.SetReadDeadline(time.Now().Add(ConnectTimeOut))</span><br><span class="line">read, err := connect.Read(buf)</span><br></pre></td></tr></table></figure>
+
+<h2 id="BTW"><a href="#BTW" class="headerlink" title="BTW"></a>BTW</h2><p>以上为设计消息队列的一些思路，利用Golang在goroutine + channel上的优势，可以很简洁地实现这些行为，<br>比如下面链接的Github仓库就是我使用Go实现的基于Redis的消息队列：</p>
+<p><a href="https://github.com/raomuyang/sikong-mq" target="_blank" rel="noopener">SKMQ，轻量的可限流队列</a></p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:  </strong>木陽
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link: </strong>
+    <a href="http://atomicer.cn/2017/12/26/%E8%AE%BE%E8%AE%A1%E4%B8%80%E4%B8%AA%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/" title="消息队列设计思路">http://atomicer.cn/2017/12/26/设计一个消息队列/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" rel="noopener" target="_blank"><i class="fa fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/Message-Queue/" rel="tag"><i class="fa fa-tag"></i> Message-Queue</a>
+              <a href="/tags/%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/" rel="tag"><i class="fa fa-tag"></i> 消息队列</a>
+              <a href="/tags/golang/" rel="tag"><i class="fa fa-tag"></i> golang</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2017/06/23/%E6%AF%95%E4%B8%9A%E6%97%85%E8%A1%8C%E5%8D%81%E4%B8%89%E5%A4%A9/" rel="prev" title="毕业旅行十三天">
+      <i class="fa fa-chevron-left"></i> 毕业旅行十三天
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018/01/18/gnu-parallel-nfs-%E5%AE%9E%E7%8E%B0%E5%85%B1%E4%BA%AB%E6%96%87%E4%BB%B6%E7%BD%91%E7%BB%9C%E7%9A%84%E5%B9%B6%E5%8F%91%E8%AE%A1%E7%AE%97%E7%AD%89%E6%93%8D%E4%BD%9C/" rel="next" title="Gnu/parallel + Nfs 实现共享文件网络的并发计算等操作">
+      Gnu/parallel + Nfs 实现共享文件网络的并发计算等操作 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#从功能上思考"><span class="nav-number">1.</span> <span class="nav-text">从功能上思考</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#消息接收、转发与确认"><span class="nav-number">1.1.</span> <span class="nav-text">消息接收、转发与确认</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#消费者注册"><span class="nav-number">1.2.</span> <span class="nav-text">消费者注册</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#设计实现的思路"><span class="nav-number">2.</span> <span class="nav-text">设计实现的思路</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#传输协议与消息格式"><span class="nav-number">2.1.</span> <span class="nav-text">传输协议与消息格式</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#消息的-type-属性"><span class="nav-number">2.1.1.</span> <span class="nav-text">消息的 type 属性</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#消息投递与接收"><span class="nav-number">2.1.2.</span> <span class="nav-text">消息投递与接收</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#心跳检测"><span class="nav-number">2.1.3.</span> <span class="nav-text">心跳检测</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#BTW"><span class="nav-number">3.</span> <span class="nav-text">BTW</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="木陽"
+      src="/mine.jpg">
+  <p class="site-author-name" itemprop="name">木陽</p>
+  <div class="site-description" itemprop="description">木之陽兮  卿云烂兮</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">32</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">16</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">50</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/raomuyang" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;raomuyang" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="http://mail.qq.com/cgi-bin/qm_share?t=qm_mailme&email=RzUmKCoiKSApJikHISg-KiYuK2kkKCo" title="E-Mail → http:&#x2F;&#x2F;mail.qq.com&#x2F;cgi-bin&#x2F;qm_share?t&#x3D;qm_mailme&amp;email&#x3D;RzUmKCoiKSApJikHISg-KiYuK2kkKCo" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="/atom.xml" title="RSS → &#x2F;atom.xml"><i class="fa fa-fw fa-rss"></i>RSS</a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+  <div class="beian"><a href="http://www.beian.miit.gov.cn/" rel="noopener" target="_blank">赣ICP备16004083号 </a>
+  </div>
+
+<div class="copyright">
+  
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">木陽  使用<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">(CC) BY-NC-SA</a> 许可发布</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+  <script>
+    (function(){
+      var bp = document.createElement('script');
+      var curProtocol = window.location.protocol.split(':')[0];
+      bp.src = (curProtocol === 'https') ? 'https://zz.bdstatic.com/linksubmit/push.js' : 'http://push.zhanzhang.baidu.com/push.js';
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(bp, s);
+    })();
+  </script>
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

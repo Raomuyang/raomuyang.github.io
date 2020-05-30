@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon.png">
+  <link rel="mask-icon" href="/favicon.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://atomicer.cn').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta property="og:type" content="article">
+<meta property="og:title" content="Kafka学习笔记 - 生产与消费">
+<meta property="og:url" content="http://atomicer.cn/2018/04/12/kafka%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/index.html">
+<meta property="og:site_name" content="木陽">
+<meta property="og:image" content="http://cloud.atomicer.cn/blog-img/20180412/Image0.png">
+<meta property="og:image" content="http://cloud.atomicer.cn/blog-img/20180412/Image1.png">
+<meta property="og:image" content="http://cloud.atomicer.cn/blog-img/20180412/Image2.png">
+<meta property="og:image" content="http://cloud.atomicer.cn/blog-img/20180412/Image3.png">
+<meta property="og:image" content="http://cloud.atomicer.cn/blog-img/20180412/Image4.png">
+<meta property="article:published_time" content="2018-04-12T12:01:30.000Z">
+<meta property="article:modified_time" content="2020-05-30T09:25:26.300Z">
+<meta property="article:author" content="木陽">
+<meta property="article:tag" content="Java">
+<meta property="article:tag" content="Kafka">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://cloud.atomicer.cn/blog-img/20180412/Image0.png">
+
+<link rel="canonical" href="http://atomicer.cn/2018/04/12/kafka%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>Kafka学习笔记 - 生产与消费 | 木陽</title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-82755477-1"></script>
+    <script>
+      if (CONFIG.hostname === location.hostname) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-82755477-1');
+      }
+    </script>
+
+
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?28428a78c9ad21d09428f89378d9c50b";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">木陽</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <h1 class="site-subtitle" itemprop="description">木之陽兮  卿云烂兮</h1>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>Categories</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>Search
+        </a>
+      </li>
+  </ul>
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="none"
+           placeholder="Searching..." spellcheck="false"
+           type="text" id="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="http://atomicer.cn/2018/04/12/kafka%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/mine.jpg">
+      <meta itemprop="name" content="木陽">
+      <meta itemprop="description" content="木之陽兮  卿云烂兮">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="木陽">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          Kafka学习笔记 - 生产与消费
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-04-12 12:01:30" itemprop="dateCreated datePublished" datetime="2018-04-12T12:01:30+00:00">2018-04-12</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Java/" itemprop="url" rel="index">
+                    <span itemprop="name">Java</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Java/Kafka/" itemprop="url" rel="index">
+                    <span itemprop="name">Kafka</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><img src="http://cloud.atomicer.cn/blog-img/20180412/Image0.png" alt=""></p>
+<a id="more"></a>
+
+<h2 id="命令行操作"><a href="#命令行操作" class="headerlink" title="命令行操作"></a>命令行操作</h2><h3 id="创建一个主题"><a href="#创建一个主题" class="headerlink" title="创建一个主题"></a>创建一个主题</h3><figure class="highlight brainfuck"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">kafka</span><span class="literal">-</span><span class="comment">topics</span><span class="string">.</span><span class="comment">sh</span> --<span class="comment">create</span> --<span class="comment">zookeeper</span> <span class="comment">localhost:2181</span> --<span class="comment">replication</span><span class="literal">-</span><span class="comment">factor</span> <span class="comment">1</span> --<span class="comment">partitions</span> <span class="comment">1</span> --<span class="comment">topic</span> <span class="comment">test</span></span><br></pre></td></tr></table></figure>
+<p><code>replication-fator</code>: broker的复制次数</p>
+<h3 id="生产者投入消息"><a href="#生产者投入消息" class="headerlink" title="生产者投入消息"></a>生产者投入消息</h3><figure class="highlight stata"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kafka-console-producer.<span class="keyword">sh</span> --broker-<span class="keyword">list</span> localhost:9092 --topic <span class="keyword">test</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="消费者取消息"><a href="#消费者取消息" class="headerlink" title="消费者取消息"></a>消费者取消息</h3><figure class="highlight stata"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kafka-console-consumer.<span class="keyword">sh</span> —<span class="keyword">bootstrap</span>-server localhost:9092 --topic <span class="keyword">test</span> --from-beginning</span><br></pre></td></tr></table></figure>
+
+<h2 id="Java-SDK实践"><a href="#Java-SDK实践" class="headerlink" title="Java SDK实践"></a>Java SDK实践</h2><h3 id="生产者"><a href="#生产者" class="headerlink" title="生产者"></a>生产者</h3><h4 id="通过Properties配置KafkaProducer"><a href="#通过Properties配置KafkaProducer" class="headerlink" title="通过Properties配置KafkaProducer"></a>通过Properties配置KafkaProducer</h4><p>基本配置包括：</p>
+<ul>
+<li>bootstrap.servers=localhost:9092</li>
+<li>value.serializer=org.apache.kafka.common.serialization.StringSerializer</li>
+<li>key.serializer=org.apache.kafka.common.serialization.StringSerializer  （可以自定义序列化工具）</li>
+</ul>
+<h4 id="创建ProducerRecord"><a href="#创建ProducerRecord" class="headerlink" title="创建ProducerRecord"></a>创建ProducerRecord</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">Properties kafkaProfile = <span class="keyword">new</span> Properties();</span><br><span class="line">try (InputStream inputStream = ProducerTest.class.getResourceAsStream("/producer.properties")) &#123;</span><br><span class="line">    kafkaProfile.load(inputStream);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">KafkaProducer&lt;String, String&gt;  producer = <span class="keyword">new</span> KafkaProducer&lt;&gt;(kafkaProfile);</span><br><span class="line">ProducerRecord&lt;String, String&gt; record = <span class="keyword">new</span> ProducerRecord&lt;&gt;(</span><br><span class="line">        <span class="string">"test"</span>, <span class="string">"Test product2"</span>, <span class="string">"product-2"</span> + <span class="keyword">new</span> Random(<span class="number">100</span>).nextDouble());</span><br><span class="line">Future&lt;RecordMetadata&gt; future = producer.send(record);</span><br><span class="line">RecordMetadata metadata = future.get();</span><br><span class="line">System.out.println(record.value() + <span class="string">" : "</span> + metadata.partition());</span><br></pre></td></tr></table></figure>
+
+<h4 id="同步或异步发送消息"><a href="#同步或异步发送消息" class="headerlink" title="同步或异步发送消息"></a>同步或异步发送消息</h4><h3 id="消费者"><a href="#消费者" class="headerlink" title="消费者"></a>消费者</h3><h4 id="通过Properties配置KafkaConsumer"><a href="#通过Properties配置KafkaConsumer" class="headerlink" title="通过Properties配置KafkaConsumer"></a>通过Properties配置KafkaConsumer</h4><p>基本配置包括</p>
+<ul>
+<li>bootstrap.servers=localhost:9092</li>
+<li>group.id=TestGroup</li>
+<li>key.deserializer=org.apache.kafka.common.serialization.StringDeserializer</li>
+<li>value.deserializer=org.apache.kafka.common.serialization.StringDeserializer</li>
+</ul>
+<p>如果不加入group，kafka不能进行balance，Consumer宕机时，kafka不能Rebalance</p>
+<h4 id="通过poll取消息"><a href="#通过poll取消息" class="headerlink" title="通过poll取消息"></a>通过poll取消息</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">try</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">while</span> (<span class="keyword">true</span>) &#123;</span><br><span class="line">        ConsumerRecords&lt;String, String&gt; records = consumer.poll(<span class="number">100</span>);</span><br><span class="line">        records.forEach(record -&gt; System.out.println(String.format(</span><br><span class="line">                <span class="string">"topic: %s, value: %s, partition: %s, offset: %s"</span>,</span><br><span class="line">                record.topic(), record.value(),</span><br><span class="line">                record.partition(), record.offset())));</span><br><span class="line">    &#125;</span><br><span class="line">&#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">    consumer.close();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在同一个组中的如果起了多个Consumer，而主题分区数小于Consumer数量，那么多余的Consumer也会被闲置:<br>  比如起了两个Consumer订阅同一个主题，主题分区只有一个，那么只有一个消费者和主题的分区绑定并订阅新到且未被读取的消息；当这个Consumer挂掉时，等待一段时间后，协调者会协调另一个消费者会开始从kafka中读取消息</p>
+<p>多个group订阅了topic时，topic的动态会同时发送给多个group；在不选择seek到指定的offset时，会从订阅那一刻之后的消息开始poll</p>
+<h5 id="疑惑：为什么提交错误的offset并不能导致异常，所有的消息都能够正常地poll"><a href="#疑惑：为什么提交错误的offset并不能导致异常，所有的消息都能够正常地poll" class="headerlink" title="疑惑：为什么提交错误的offset并不能导致异常，所有的消息都能够正常地poll"></a>疑惑：为什么提交错误的offset并不能导致异常，所有的消息都能够正常地poll</h5><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">while</span> (<span class="keyword">true</span>) &#123;</span><br><span class="line">    ConsumerRecords&lt;String, String&gt; records = consumer.poll(<span class="number">1</span>);</span><br><span class="line">    records.forEach(record -&gt; &#123;</span><br><span class="line">        System.out.println(String.format(</span><br><span class="line">            <span class="string">"topic: %s, value: %s, partition: %s, offset: %s"</span>,</span><br><span class="line">            record.topic(), record.value(), record.partition(), record.offset()));</span><br><span class="line">        currentOffsets.put(</span><br><span class="line">                    <span class="keyword">new</span> TopicPartition(record.topic(), record.partition()),</span><br><span class="line">                    <span class="keyword">new</span> OffsetAndMetadata(record.offset() + <span class="number">10</span>, <span class="string">"None"</span>))</span><br><span class="line">            ;</span><br><span class="line">        consumer.commitSync(currentOffsets);</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在书中（Kafka权威指南）可以找到答案：</p>
+<p><img src="http://cloud.atomicer.cn/blog-img/20180412/Image1.png" alt=""></p>
+<ul>
+<li><p>第一个分区正常poll，但是始终设置offset为1 (关闭自动提交： enable.atuo.commit=false)<br><img src="http://cloud.atomicer.cn/blog-img/20180412/Image2.png" alt=""></p>
+</li>
+<li><p>第二个Consumer接管后，从offset处开始读取<br><img src="http://cloud.atomicer.cn/blog-img/20180412/Image3.png" alt=""></p>
+</li>
+</ul>
+<h4 id="Seek"><a href="#Seek" class="headerlink" title="Seek"></a>Seek</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">consumer.poll(<span class="number">1</span>);</span><br><span class="line">consumer.seekToBeginning(Collections.singleton(<span class="keyword">new</span> TopicPartition(<span class="string">"test"</span>, <span class="number">0</span>)));</span><br></pre></td></tr></table></figure>
+
+<h5 id="探索：consumer-subscribe并不会真正地订阅，只有poll请求发出时才自动订阅，否则会抛出异常"><a href="#探索：consumer-subscribe并不会真正地订阅，只有poll请求发出时才自动订阅，否则会抛出异常" class="headerlink" title="探索：consumer.subscribe并不会真正地订阅，只有poll请求发出时才自动订阅，否则会抛出异常"></a>探索：consumer.subscribe并不会真正地订阅，只有poll请求发出时才自动订阅，否则会抛出异常</h5><p><img src="http://cloud.atomicer.cn/blog-img/20180412/Image4.png" alt=""></p>
+<h4 id="再均衡监听器-ConsumerRebalanceListener"><a href="#再均衡监听器-ConsumerRebalanceListener" class="headerlink" title="再均衡监听器 ( ConsumerRebalanceListener )"></a>再均衡监听器 ( ConsumerRebalanceListener )</h4><p>绑定再均衡监听器，可以在分配分区后和再均衡前执行特点的任务，比如在再均衡前提交已处理的offset</p>
+<h5 id="onPartitionsRevoked"><a href="#onPartitionsRevoked" class="headerlink" title="onPartitionsRevoked"></a>onPartitionsRevoked</h5><p>再均衡时调用 -&gt;      [  停止读取数据之后 -   再均衡之前  )<br>再均衡时可能失去对分区的所有权，此时应该确保提交offset</p>
+<h5 id="onPartitionsAssigned"><a href="#onPartitionsAssigned" class="headerlink" title="onPartitionsAssigned"></a>onPartitionsAssigned</h5><p>再均衡时调用 -&gt;      [  再均衡之后 - 读取数据之前  )</p>
+<h4 id="通过weakup退出consumer"><a href="#通过weakup退出consumer" class="headerlink" title="通过weakup退出consumer"></a>通过weakup退出consumer</h4>
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:  </strong>木陽
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link: </strong>
+    <a href="http://atomicer.cn/2018/04/12/kafka%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/" title="Kafka学习笔记 - 生产与消费">http://atomicer.cn/2018/04/12/kafka学习笔记/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" rel="noopener" target="_blank"><i class="fa fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/Java/" rel="tag"><i class="fa fa-tag"></i> Java</a>
+              <a href="/tags/Kafka/" rel="tag"><i class="fa fa-tag"></i> Kafka</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018/02/11/redis%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81/" rel="prev" title="Redis分布式锁">
+      <i class="fa fa-chevron-left"></i> Redis分布式锁
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018/09/09/%E5%9F%BA%E4%BA%8Eetcd%E3%80%81zookeeper%E7%AD%89kv%E5%AD%98%E5%82%A8%E5%AE%9E%E7%8E%B0%E6%9C%8D%E5%8A%A1%E5%8F%91%E7%8E%B0/" rel="next" title="基于Etcd/zookeeper等kv存储实现服务发现">
+      基于Etcd/zookeeper等kv存储实现服务发现 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#命令行操作"><span class="nav-number">1.</span> <span class="nav-text">命令行操作</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#创建一个主题"><span class="nav-number">1.1.</span> <span class="nav-text">创建一个主题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#生产者投入消息"><span class="nav-number">1.2.</span> <span class="nav-text">生产者投入消息</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#消费者取消息"><span class="nav-number">1.3.</span> <span class="nav-text">消费者取消息</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Java-SDK实践"><span class="nav-number">2.</span> <span class="nav-text">Java SDK实践</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#生产者"><span class="nav-number">2.1.</span> <span class="nav-text">生产者</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#通过Properties配置KafkaProducer"><span class="nav-number">2.1.1.</span> <span class="nav-text">通过Properties配置KafkaProducer</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#创建ProducerRecord"><span class="nav-number">2.1.2.</span> <span class="nav-text">创建ProducerRecord</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#同步或异步发送消息"><span class="nav-number">2.1.3.</span> <span class="nav-text">同步或异步发送消息</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#消费者"><span class="nav-number">2.2.</span> <span class="nav-text">消费者</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#通过Properties配置KafkaConsumer"><span class="nav-number">2.2.1.</span> <span class="nav-text">通过Properties配置KafkaConsumer</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#通过poll取消息"><span class="nav-number">2.2.2.</span> <span class="nav-text">通过poll取消息</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#疑惑：为什么提交错误的offset并不能导致异常，所有的消息都能够正常地poll"><span class="nav-number">2.2.2.1.</span> <span class="nav-text">疑惑：为什么提交错误的offset并不能导致异常，所有的消息都能够正常地poll</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Seek"><span class="nav-number">2.2.3.</span> <span class="nav-text">Seek</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#探索：consumer-subscribe并不会真正地订阅，只有poll请求发出时才自动订阅，否则会抛出异常"><span class="nav-number">2.2.3.1.</span> <span class="nav-text">探索：consumer.subscribe并不会真正地订阅，只有poll请求发出时才自动订阅，否则会抛出异常</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#再均衡监听器-ConsumerRebalanceListener"><span class="nav-number">2.2.4.</span> <span class="nav-text">再均衡监听器 ( ConsumerRebalanceListener )</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#onPartitionsRevoked"><span class="nav-number">2.2.4.1.</span> <span class="nav-text">onPartitionsRevoked</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#onPartitionsAssigned"><span class="nav-number">2.2.4.2.</span> <span class="nav-text">onPartitionsAssigned</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#通过weakup退出consumer"><span class="nav-number">2.2.5.</span> <span class="nav-text">通过weakup退出consumer</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="木陽"
+      src="/mine.jpg">
+  <p class="site-author-name" itemprop="name">木陽</p>
+  <div class="site-description" itemprop="description">木之陽兮  卿云烂兮</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">32</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">16</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">50</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/raomuyang" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;raomuyang" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="http://mail.qq.com/cgi-bin/qm_share?t=qm_mailme&email=RzUmKCoiKSApJikHISg-KiYuK2kkKCo" title="E-Mail → http:&#x2F;&#x2F;mail.qq.com&#x2F;cgi-bin&#x2F;qm_share?t&#x3D;qm_mailme&amp;email&#x3D;RzUmKCoiKSApJikHISg-KiYuK2kkKCo" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="/atom.xml" title="RSS → &#x2F;atom.xml"><i class="fa fa-fw fa-rss"></i>RSS</a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+  <div class="beian"><a href="http://www.beian.miit.gov.cn/" rel="noopener" target="_blank">赣ICP备16004083号 </a>
+  </div>
+
+<div class="copyright">
+  
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">木陽  使用<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">(CC) BY-NC-SA</a> 许可发布</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+  <script>
+    (function(){
+      var bp = document.createElement('script');
+      var curProtocol = window.location.protocol.split(':')[0];
+      bp.src = (curProtocol === 'https') ? 'https://zz.bdstatic.com/linksubmit/push.js' : 'http://push.zhanzhang.baidu.com/push.js';
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(bp, s);
+    })();
+  </script>
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

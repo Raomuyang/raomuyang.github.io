@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon.png">
+  <link rel="mask-icon" href="/favicon.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://atomicer.cn').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="苦艾初长，乃是清明。游子思归，奈何列车有时而不我待，为了在这传统时节早日到家，不得不选择翘掉周五晚上的《软件体系结构》。而临走前对老师放下“豪言”曰：已了解过‘云计算’的相关介绍，言既出，莫敢食，查阅相关资料，在此写下此文表述自己的想法。  &amp;nbsp;&amp;nbsp;2006年谷歌推出了“Google 101计划”，并正式提出“云”的概念和理论。随后亚马逊、微软、惠普、雅虎、英特尔、IBM等公司都">
+<meta property="og:type" content="article">
+<meta property="og:title" content="关于“云”的一点理解">
+<meta property="og:url" content="http://atomicer.cn/2016/04/02/%E5%85%B3%E4%BA%8E%E4%BA%91%E8%AE%A1%E7%AE%97%E7%9A%84%E4%B8%80%E7%82%B9%E7%90%86%E8%A7%A3/index.html">
+<meta property="og:site_name" content="木陽">
+<meta property="og:description" content="苦艾初长，乃是清明。游子思归，奈何列车有时而不我待，为了在这传统时节早日到家，不得不选择翘掉周五晚上的《软件体系结构》。而临走前对老师放下“豪言”曰：已了解过‘云计算’的相关介绍，言既出，莫敢食，查阅相关资料，在此写下此文表述自己的想法。  &amp;nbsp;&amp;nbsp;2006年谷歌推出了“Google 101计划”，并正式提出“云”的概念和理论。随后亚马逊、微软、惠普、雅虎、英特尔、IBM等公司都">
+<meta property="og:image" content="http://cloud.atomicer.cn/blog-img/cloud/1.png">
+<meta property="og:image" content="http://cloud.atomicer.cn/blog-img/cloud/2.png">
+<meta property="article:published_time" content="2016-04-02T22:42:08.000Z">
+<meta property="article:modified_time" content="2020-05-30T09:25:26.300Z">
+<meta property="article:author" content="木陽">
+<meta property="article:tag" content="云计算">
+<meta property="article:tag" content="云存储">
+<meta property="article:tag" content="云技术">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://cloud.atomicer.cn/blog-img/cloud/1.png">
+
+<link rel="canonical" href="http://atomicer.cn/2016/04/02/%E5%85%B3%E4%BA%8E%E4%BA%91%E8%AE%A1%E7%AE%97%E7%9A%84%E4%B8%80%E7%82%B9%E7%90%86%E8%A7%A3/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>关于“云”的一点理解 | 木陽</title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-82755477-1"></script>
+    <script>
+      if (CONFIG.hostname === location.hostname) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-82755477-1');
+      }
+    </script>
+
+
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?28428a78c9ad21d09428f89378d9c50b";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">木陽</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <h1 class="site-subtitle" itemprop="description">木之陽兮  卿云烂兮</h1>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>Categories</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>Search
+        </a>
+      </li>
+  </ul>
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="none"
+           placeholder="Searching..." spellcheck="false"
+           type="text" id="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="http://atomicer.cn/2016/04/02/%E5%85%B3%E4%BA%8E%E4%BA%91%E8%AE%A1%E7%AE%97%E7%9A%84%E4%B8%80%E7%82%B9%E7%90%86%E8%A7%A3/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/mine.jpg">
+      <meta itemprop="name" content="木陽">
+      <meta itemprop="description" content="木之陽兮  卿云烂兮">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="木陽">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          关于“云”的一点理解
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2016-04-02 22:42:08" itemprop="dateCreated datePublished" datetime="2016-04-02T22:42:08+00:00">2016-04-02</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E9%9A%8F%E7%AC%94/" itemprop="url" rel="index">
+                    <span itemprop="name">随笔</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <blockquote>
+<p>苦艾初长，乃是清明。游子思归，奈何列车有时而不我待，为了在这传统时节早日到家，不得不选择翘掉周五晚上的《软件体系结构》。而临走前对老师放下“豪言”曰：已了解过‘云计算’的相关介绍，言既出，莫敢食，查阅相关资料，在此写下此文表述自己的想法。</p>
+</blockquote>
+<p>&nbsp;&nbsp;2006年谷歌推出了“Google 101计划”，并正式提出“云”的概念和理论。随后亚马逊、微软、惠普、雅虎、英特尔、IBM等公司都宣布了自己的“云计划”，云安全、云存储、内部云、外部云、公共云、私有云…[<a href="http://www.chinanews.com/it/2010/08-09/2456432.shtml" target="_blank" rel="noopener">1</a>] &nbsp;互联网的发展日新月异，尤其是近几年的速度快到不敢相信。我已经不记得在国内‘云’（Cloud）这个词为什么突然火起来的了，就像不知道为什么在我眼里11年塞班的世界，12年怎么就突然成为了安卓的世界。也许，是因为那是忙着高考的我们无暇顾及互联网世界的变化。</p>
+<p>&nbsp;&nbsp;在这互联网的时代，我们每天都在和互联网产品打交道，从百度云到微云到阿里云，‘云’对于我们大多数人来说既熟悉也陌生，那么‘云’究竟所谓何物？</p>
+<a id="more"></a>
+
+<p>我们在互联网中所接触到的‘云’，有“云技术[Cloud Technology]”、“云计算[Cloud Computing]”和“云存储[Cloud Storage]”。这三者都是“云”，但却分属于不同的概念。</p>
+<blockquote>
+<h3 id="云技术-Cloud-Technology"><a href="#云技术-Cloud-Technology" class="headerlink" title="云技术[Cloud Technology]"></a>云技术[Cloud Technology]</h3><p>云技术是指基于云计算商业模式应用的网络技术、信息技术、整合技术、管理平台技术和应用技术的统称，其中包括虚拟化、分布式、并行运算等，强调的是技术的实现。</p>
+</blockquote>
+<p>我查阅了许多的资料，发现国内很多网站上在介绍云计算和云技术时模棱两可。事实上，云计算与云技术并没有必然的联系，前者是一种IT服务模式，为30%的技术+70%的模式；而云技术为用户调用的一个云服务背后复杂的实现技术，比如我们向服务端发出一条指令，这个指令是一个庞大的计算，而服务端通过网络将这个计算拆分成无数个小小的计算交由分布在网络上的其它服务器完成，待到计算完成后将处理结果返回给我们。</p>
+<p>我的理解：云计算是云技术的服务模式，云技术是云计算的技术实现</p>
+<p>打开百度百科的“云技术”这这个词条，你会发现里面对词条的解释夹杂着大量关于云计算的解释<br><img src="http://cloud.atomicer.cn/blog-img/cloud/1.png" alt="百度词条"></p>
+<hr>
+<p><img src="http://cloud.atomicer.cn/blog-img/cloud/2.png" alt="百度词条"></p>
+<ul>
+<li>词条的中文名为“云技术”，英文名却为“Cloud Computing”</li>
+<li>在云技术的定义中，引用的参考文献是《云计算技术原理》（刘鹏）</li>
+</ul>
+<p>相比“云计算”的词条，“云技术”词条显得不那么专业，我认为词条编辑者也许是将云技术和云计算技术两个概念混淆了。</p>
+<hr>
+<blockquote>
+<h3 id="云计算-Cloud-Computing"><a href="#云计算-Cloud-Computing" class="headerlink" title="云计算[Cloud Computing]"></a>云计算[Cloud Computing]</h3><p>维基百科该词条的第一句话：<code>云计算（英语：Cloud Computing），是一种基于互联网的计算方式，通过这种方式，共享的软硬件资源和信息可以按需求提供给计算机和其他设备</code></p>
+</blockquote>
+<p>不知道大家是否和我一样，对C/S结构的系统和云计算之间的区别一直摸不着头脑：二者同样是基于互联网（局域网）的计算方式，同样可以共享软硬件资源，同样可以提供信息给其它设备，那么二者是什么关系呢？</p>
+<blockquote>
+<ul>
+<li><h4 id="C-S-Client-Server-model"><a href="#C-S-Client-Server-model" class="headerlink" title="C/S(Client-Server) model"></a>C/S(Client-Server) model</h4>又被翻译翻译作主/从架构，是自1980年代由大型计算机转变的一种网络架构，如今许多系统都是基于此结构实现，如我们尝试与</li>
+</ul>
+<p>服务器可是有状态或者无状态的。无状态的服务器不会保留任何两个请求之间的信息，有状态服务器会记住请求之间的信息。这些信息的作用域可以是全局的或者某个事务 （session）的。静态 HTML 页面服务器是一个无状态服务器的例子，Apache Tomcat 是一个有状态服务器。[<a href="https://zh.wikipedia.org/wiki/%E4%B8%BB%E5%BE%9E%E5%BC%8F%E6%9E%B6%E6%A7%8B" target="_blank" rel="noopener">维基百科：主從式架構</a>]</p>
+</blockquote>
+<blockquote>
+<ul>
+<li><h4 id="云计算"><a href="#云计算" class="headerlink" title="云计算"></a>云计算</h4>云计算源于分布式计算、并行计算、网格计算的发展，美国国家标准与技术研究院（NIST）将其定义为一种<strong>按使用量付费</strong>的模式，可以说是计算机概念的商业实现。云计算有许多种实现形式，其中就包括C/S Model。而云计算的特点在于，用户在在设计系统时不必再考虑Server如何实现、如何托管，而只需要关注有什么样的服务可以提供给他们，能得到什么样的虚拟化的资源，比如阿里云、亚马逊等服务商的VPS和虚拟主机应当属于此列。可以参考以下资料：</li>
+</ul>
+<p><em>云计算（cloudcomputing）是基于互联网的相关服务的增加、使用和交付模式，通常涉及通过互联网来提供动态易扩展且经常是虚拟化的资源。<br>(原文：Cloud computing is a style of computing in which dynamically scalable and often virtualized resources are provided as a service over the Internet.)</em>[<a href="http://baike.baidu.com/link?url=AMqZTs-WJwB9I9Dptp4nQrI3L0bTZTpoYI5raMIH22JbwGrMDi_Lmi7wup4aUcFKLS5rbzrur5bmhNtsrL5f5K" target="_blank" rel="noopener">百度百科:云计算</a>]</p>
+<p><em>Essentially it will mean that users of IT-related services will be able to focus on what the service provides them rather than how the services are implemented or hosted. Gartner maintains that although names for this type of operation have come into vogue at different times — utility computing, software as a service (SaaS) and application service providers — none has garnered widespread acceptance as the central theme for how IT-related services can be delivered globally.</em>[<a href="http://www.gartner.com/newsroom/id/707508" target="_blank" rel="noopener">Gartner Says Cloud Computing Will Be As Influential As E-business</a>]</p>
+</blockquote>
+<hr>
+<blockquote>
+<h3 id="云存储-Cloud-Storage"><a href="#云存储-Cloud-Storage" class="headerlink" title="云存储[Cloud Storage]"></a>云存储[Cloud Storage]</h3><p>云存储是通过集群应用、网络技术、分布式文件系统将网络中的大量存储设备集合起来协同工作，共同对外提供数据存储和业务访问功能的一个集合的系统。这意味着，存储设备可以在全世界的任何一个位置，而对用用户来说，某个文件可能存储在阿里云在青岛的存储设备中，另一个文件可能存在了上海的存储设备中。此时，云存储对于用户来说，不再是一个具体的存储设备，而是一种服务。这就是云存储的概念：<strong>重在服务</strong>，而非存储。</p>
+</blockquote>
+<p>所以，现在我们可以理解，为什么各种网盘可以改名为“云”，比如百度网盘改名为百度云，腾讯网盘改名为腾讯微云，360网盘现在叫360微云，因为他们提供的服务的确满足“云存储”的定义</p>
+<p>云存储服务所带来的服务自不用多说。它通过分布式的存储，增长了数据保存的时间。通过动态调节，可以按需增减容量。结束数据迁移工作，无需担心因存储技术升级而带来的额外的操作（如软盘到硬盘），从数据的安全、便携、存储保障来看，云存储都是时下的趋势。</p>
+<p>当然，以上讨论的只是云存储的概念，云存储的架构还分为“紧密耦合对称架构”和“松弛耦合非对称架构”，如有兴趣，可以参考[<a href="http://www.ibm.com/developerworks/cn/cloud/library/cl-cloudstorage/" target="_blank" rel="noopener">IBM文档库:云存储架构分析</a>]</p>
+<blockquote>
+<h4 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h4><p>记得以前我在画系统框架图时，相当然地把C/S结构中的Server等价于云，将服务端的数据库等价于云存储，以为通过网络连接的服务就是云。如今大致了解了“云”的概念，觉得当初自己的想法挺搞笑的。不过国内对“云”知识的普及力度真的是不够，基本都是互联网公司在通过“云”这个概念来炒作他们的产品，只要是个网络产品，都喜欢称之为“云”，所以时我们需要辨别的是它们是否满足“云”的特性。</p>
+<p>有一种说法，认为IT中的”Cloud”这个词来自于物理中的”Electron Cloud”（电子云），电子云具有概然行、弥漫性和分布性，而云技术、云计算和云存储中的云也都具有弥漫性、无所不在的分布性和社会性特征。我没有去查验是否属实，因为我们要关注的正是“云”的特性:弥漫、分别以及面向用户的服务。</p>
+<p>下面这两个大佬的话，也许就是“云”的未来</p>
+<ul>
+<li>全世界只需要5台电脑就足够了— IBM 托马斯·沃森</li>
+<li>个人用户的内存只需640K足矣— 比尔·盖茨</li>
+</ul>
+</blockquote>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:  </strong>木陽
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link: </strong>
+    <a href="http://atomicer.cn/2016/04/02/%E5%85%B3%E4%BA%8E%E4%BA%91%E8%AE%A1%E7%AE%97%E7%9A%84%E4%B8%80%E7%82%B9%E7%90%86%E8%A7%A3/" title="关于“云”的一点理解">http://atomicer.cn/2016/04/02/关于云计算的一点理解/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" rel="noopener" target="_blank"><i class="fa fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/%E4%BA%91%E8%AE%A1%E7%AE%97/" rel="tag"><i class="fa fa-tag"></i> 云计算</a>
+              <a href="/tags/%E4%BA%91%E5%AD%98%E5%82%A8/" rel="tag"><i class="fa fa-tag"></i> 云存储</a>
+              <a href="/tags/%E4%BA%91%E6%8A%80%E6%9C%AF/" rel="tag"><i class="fa fa-tag"></i> 云技术</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2016/04/01/JVM%E5%86%85%E5%AD%98%E5%8F%8A%E6%95%B0%E6%8D%AE%E5%9C%A8%E5%86%85%E5%AD%98%E4%B8%AD%E7%9A%84%E5%AD%98%E5%82%A8/" rel="prev" title="JVM的内存区及数据在内存中的存储">
+      <i class="fa fa-chevron-left"></i> JVM的内存区及数据在内存中的存储
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2016/05/07/java-%E8%8E%B7%E5%8F%96annotation%E7%9A%84%E5%80%BC%E4%BB%A5%E5%8F%8A%E9%80%9A%E8%BF%87%E5%8F%8D%E5%B0%84%E5%AE%9E%E4%BE%8B%E5%8C%96%E4%B8%80%E4%B8%AA%E5%AF%B9%E8%B1%A1%E7%9A%84%E8%BF%87%E7%A8%8B/" rel="next" title="Java 获取Annotation的值以及通过反射实例化一个对象的过程">
+      Java 获取Annotation的值以及通过反射实例化一个对象的过程 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#云技术-Cloud-Technology"><span class="nav-number">1.</span> <span class="nav-text">云技术[Cloud Technology]</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#云计算-Cloud-Computing"><span class="nav-number">2.</span> <span class="nav-text">云计算[Cloud Computing]</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#C-S-Client-Server-model"><span class="nav-number">2.1.</span> <span class="nav-text">C&#x2F;S(Client-Server) model</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#云计算"><span class="nav-number">2.2.</span> <span class="nav-text">云计算</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#云存储-Cloud-Storage"><span class="nav-number">3.</span> <span class="nav-text">云存储[Cloud Storage]</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#总结"><span class="nav-number">3.1.</span> <span class="nav-text">总结</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="木陽"
+      src="/mine.jpg">
+  <p class="site-author-name" itemprop="name">木陽</p>
+  <div class="site-description" itemprop="description">木之陽兮  卿云烂兮</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">32</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">16</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">50</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/raomuyang" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;raomuyang" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="http://mail.qq.com/cgi-bin/qm_share?t=qm_mailme&email=RzUmKCoiKSApJikHISg-KiYuK2kkKCo" title="E-Mail → http:&#x2F;&#x2F;mail.qq.com&#x2F;cgi-bin&#x2F;qm_share?t&#x3D;qm_mailme&amp;email&#x3D;RzUmKCoiKSApJikHISg-KiYuK2kkKCo" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="/atom.xml" title="RSS → &#x2F;atom.xml"><i class="fa fa-fw fa-rss"></i>RSS</a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+  <div class="beian"><a href="http://www.beian.miit.gov.cn/" rel="noopener" target="_blank">赣ICP备16004083号 </a>
+  </div>
+
+<div class="copyright">
+  
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">木陽  使用<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">(CC) BY-NC-SA</a> 许可发布</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+  <script>
+    (function(){
+      var bp = document.createElement('script');
+      var curProtocol = window.location.protocol.split(':')[0];
+      bp.src = (curProtocol === 'https') ? 'https://zz.bdstatic.com/linksubmit/push.js' : 'http://push.zhanzhang.baidu.com/push.js';
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(bp, s);
+    })();
+  </script>
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

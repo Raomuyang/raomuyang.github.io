@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon.png">
+  <link rel="mask-icon" href="/favicon.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://atomicer.cn').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="一直听说Nginx的强大，它不仅可以作为Web服务器，按照调度规则实现动态、静态页面的分离；还可以作为反向代理服务器，构建服务集群，按轮询、权重等多种方式对后端服务器做负载均衡。以及自动剔除因故障负载均衡列表中宕机的服务器。这两天折腾了一下Nginx的安装、配置，并通过Docker模拟出Nginx在多服务器提供服务的状态下的负载均衡。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="使用Docker+Nginx模拟负载均衡">
+<meta property="og:url" content="http://atomicer.cn/2016/10/12/%E4%BD%BF%E7%94%A8Docker%E5%8A%A0Nginx%E6%A8%A1%E6%8B%9F%E5%AE%9E%E7%8E%B0%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1/index.html">
+<meta property="og:site_name" content="木陽">
+<meta property="og:description" content="一直听说Nginx的强大，它不仅可以作为Web服务器，按照调度规则实现动态、静态页面的分离；还可以作为反向代理服务器，构建服务集群，按轮询、权重等多种方式对后端服务器做负载均衡。以及自动剔除因故障负载均衡列表中宕机的服务器。这两天折腾了一下Nginx的安装、配置，并通过Docker模拟出Nginx在多服务器提供服务的状态下的负载均衡。">
+<meta property="article:published_time" content="2016-10-12T11:35:13.000Z">
+<meta property="article:modified_time" content="2020-05-30T09:25:26.300Z">
+<meta property="article:author" content="木陽">
+<meta property="article:tag" content="Nginx">
+<meta property="article:tag" content="Docker">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://atomicer.cn/2016/10/12/%E4%BD%BF%E7%94%A8Docker%E5%8A%A0Nginx%E6%A8%A1%E6%8B%9F%E5%AE%9E%E7%8E%B0%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>使用Docker+Nginx模拟负载均衡 | 木陽</title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-82755477-1"></script>
+    <script>
+      if (CONFIG.hostname === location.hostname) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-82755477-1');
+      }
+    </script>
+
+
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?28428a78c9ad21d09428f89378d9c50b";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">木陽</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <h1 class="site-subtitle" itemprop="description">木之陽兮  卿云烂兮</h1>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>Categories</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>Search
+        </a>
+      </li>
+  </ul>
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="none"
+           placeholder="Searching..." spellcheck="false"
+           type="text" id="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="http://atomicer.cn/2016/10/12/%E4%BD%BF%E7%94%A8Docker%E5%8A%A0Nginx%E6%A8%A1%E6%8B%9F%E5%AE%9E%E7%8E%B0%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/mine.jpg">
+      <meta itemprop="name" content="木陽">
+      <meta itemprop="description" content="木之陽兮  卿云烂兮">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="木陽">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          使用Docker+Nginx模拟负载均衡
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2016-10-12 11:35:13" itemprop="dateCreated datePublished" datetime="2016-10-12T11:35:13+00:00">2016-10-12</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Docker/" itemprop="url" rel="index">
+                    <span itemprop="name">Docker</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Docker/Nginx/" itemprop="url" rel="index">
+                    <span itemprop="name">Nginx</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <blockquote>
+<p>一直听说Nginx的强大，它不仅可以作为Web服务器，按照调度规则实现动态、静态页面的分离；还可以作为反向代理服务器，构建服务集群，按轮询、权重等多种方式对后端服务器做负载均衡。以及自动剔除因故障负载均衡列表中宕机的服务器。这两天折腾了一下Nginx的安装、配置，并通过Docker模拟出Nginx在多服务器提供服务的状态下的负载均衡。</p>
+</blockquote>
+<a id="more"></a>
+
+<h3 id="一-系统环境"><a href="#一-系统环境" class="headerlink" title="(一) 系统环境"></a>(一) 系统环境</h3><table>
+<thead>
+<tr>
+<th>操作系统</th>
+<th align="center">Docker</th>
+<th align="center">Nginx</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Ubuntu 16</td>
+<td align="center">1.12.1</td>
+<td align="center">1.8.0</td>
+</tr>
+</tbody></table>
+<h3 id="二-准备Nginx环境"><a href="#二-准备Nginx环境" class="headerlink" title="(二) 准备Nginx环境"></a>(二) 准备Nginx环境</h3><p>　　使用Docker这种容器技术，可以很方便地将所需要的环境打包和快速部署。所以我将Nginx的环境做成Docker镜像，当需要多个Nginx服务时，只需要通过镜像启动多个容器。  </p>
+<ul>
+<li><p>镜像已经PUSH到Docker Hub上，如果需要，可以直接在Docker拉取配置好nginx环境的镜像<code>docker pull raomengnan/ubuntu:nginx-1.8.0</code></p>
+</li>
+<li><p>raomengnan/ubuntu:nginx-1.8.0 包含的基础环境： nginx，zsh，vim，ssh，python</p>
+</li>
+</ul>
+<h4 id="Dockerfile"><a href="#Dockerfile" class="headerlink" title="Dockerfile"></a>Dockerfile</h4><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> Ubuntu with Nginx</span></span><br><span class="line"><span class="meta">#</span><span class="bash"> Author raomengnan</span></span><br><span class="line">FROM raomengnan/ubuntu-base</span><br><span class="line">MAINTAINER raomengnan</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 安装升级gcc</span></span><br><span class="line">RUN rm -rf /var/lib/apt/lists/*</span><br><span class="line">RUN apt-get update</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 添加相关的src</span></span><br><span class="line">RUN apt-get -y install build-essential</span><br><span class="line">RUN apt-get -y install supervisor</span><br><span class="line">RUN mkdir -p /usr/local/temp</span><br><span class="line"></span><br><span class="line">COPY supervisor.conf /etc/supervisor/conf.d/supervisord.conf</span><br><span class="line"></span><br><span class="line">RUN wget http://nginx.org/download/nginx-1.8.0.tar.gz &amp;&amp; tar -zxvf nginx-1.8.0.tar.gz -C /usr/local/temp</span><br><span class="line">RUN wget http://zlib.net/zlib-1.2.8.tar.gz &amp;&amp; tar -zxvf zlib-1.2.8.tar.gz -C /usr/local/temp</span><br><span class="line">RUN wget http://www.openssl.org/source/openssl-1.0.1q.tar.gz &amp;&amp; tar -zxvf openssl-1.0.1q.tar.gz -C /usr/local/temp</span><br><span class="line">RUN wget http://downloads.sourceforge.net/project/pcre/pcre/8.37/pcre-8.37.tar.gz &amp;&amp; tar -zxvf pcre-8.37.tar.gz -C /usr/local/temp</span><br><span class="line"></span><br><span class="line">RUN rm *.tar.gz</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 安装</span></span><br><span class="line">RUN ls /usr/local/temp/nginx-1.8.0</span><br><span class="line">RUN cd /usr/local/temp/nginx-1.8.0 \</span><br><span class="line">      &amp;&amp; ./configure --sbin-path=/usr/local/nginx-1.8.0/nginx --conf-path=/usr/local/nginx-1.8.0/nginx.conf --pid-path=/usr/local/nginx-1.8.0/nginx.pid --with-http_ssl_module --with-pcre=/usr/local/temp/pcre-8.37 --with-zlib=/usr/local/temp/zlib-1.2.8 --with-openssl=/usr/local/temp/openssl-1.0.1q \</span><br><span class="line">      &amp;&amp; make \</span><br><span class="line">      &amp;&amp; make install</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 设置nginx是非daemon启动，否则nginx无法启动</span></span><br><span class="line">RUN echo "\ndaemon off;" &gt;&gt; /usr/local/nginx-1.8.0/nginx.conf</span><br><span class="line">RUN echo 'master_process off;' &gt;&gt; /usr/local/nginx-1.8.0/nginx.conf</span><br><span class="line">RUN echo 'error_log  logs/error.log;' &gt;&gt; /usr/local/nginx-1.8.0/nginx.conf</span><br><span class="line"></span><br><span class="line">RUN rm -rf /usr/local/temp/*</span><br><span class="line"></span><br><span class="line">ENV NGINX_HOME /usr/local/nginx-1.8.0</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 将nginx添加到<span class="built_in">command</span></span></span><br><span class="line">update-alternatives --install /usr/bin/nginx nginx /usr/local/nginx-1.8.0/nginx 300</span><br><span class="line"></span><br><span class="line">EXPOSE 80</span><br><span class="line"><span class="meta">#</span><span class="bash"> 使用supervisor来管理多个进程同时启动</span></span><br><span class="line"><span class="meta">#</span><span class="bash"> 若不想使用supervisor，可以使用：</span></span><br><span class="line"><span class="meta">#</span><span class="bash">   CMD nginx $/NGINX_HOME/nginx.conf</span></span><br><span class="line"><span class="meta">#</span><span class="bash">   或者进入容器手动启动nginx</span></span><br><span class="line">CMD ["/usr/bin/supervisord"]</span><br></pre></td></tr></table></figure>
+<h4 id="supervisor-conf"><a href="#supervisor-conf" class="headerlink" title="supervisor.conf"></a>supervisor.conf</h4><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">[supervisord]</span><br><span class="line">nodaemon=<span class="literal">true</span></span><br><span class="line"></span><br><span class="line">[program:sshd]</span><br><span class="line">command=<span class="regexp">/usr/</span>sbin/sshd -D</span><br><span class="line"></span><br><span class="line">[program:nginx]</span><br><span class="line">command=<span class="regexp">/usr/</span>local/nginx<span class="number">-1.8</span><span class="number">.0</span>/nginx -c /usr/local/nginx<span class="number">-1.8</span><span class="number">.0</span>/nginx.conf</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="三-启动Nginx服务"><a href="#三-启动Nginx服务" class="headerlink" title="(三) 启动Nginx服务"></a>(三) 启动Nginx服务</h3><p>启动nginx时，可以提供Nginx的welcome页面的访问服务，可以通过这个页面简单地尝试nginx提供的负载均衡。</p>
+<h4 id="通过镜像启动三个nginx服务"><a href="#通过镜像启动三个nginx服务" class="headerlink" title="通过镜像启动三个nginx服务"></a>通过镜像启动三个nginx服务</h4><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">docker run --name ser1 -p 8881:80 raomengnan/ubuntu:nginx-1.8.0</span><br><span class="line"></span><br><span class="line">docker run --name ser2 -p 8882:80 raomengnan/ubuntu:nginx-1.8.0</span><br><span class="line"></span><br><span class="line">docker run --name ser3 -p 8883:80 raomengnan/ubuntu:nginx-1.8.0</span><br></pre></td></tr></table></figure>
+<p><em>-p参数将容器的80端口映射到宿主机的888×端口上</em></p>
+<h4 id="以ser1作为主服务器，进入容器内修改nginx配置文件"><a href="#以ser1作为主服务器，进入容器内修改nginx配置文件" class="headerlink" title="以ser1作为主服务器，进入容器内修改nginx配置文件"></a>以ser1作为主服务器，进入容器内修改nginx配置文件</h4><p>使用<code>docker inspect ser1</code>便可以看到容器的详细信息，其中注意NetworkSetting下的这一段信息就可以知道容器的网关和ip地址</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">"Gateway": "172.17.0.1",</span><br><span class="line">"GlobalIPv6Address": "",</span><br><span class="line">"GlobalIPv6PrefixLen": 0,</span><br><span class="line">"IPAddress": "172.17.0.3",</span><br></pre></td></tr></table></figure>
+<p><code>docker exec -it ser1 bash</code>进入容器内部<br>nginx安装目录在’/usr/local/nginx-1.8.0’下，<code>vim /usr/local/nginx-1.8.0/nginx.conf</code>编辑配置文件:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash">user  nobody;</span></span><br><span class="line">worker_processes  1;</span><br><span class="line">events &#123;</span><br><span class="line">    worker_connections  1024;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">http &#123;</span><br><span class="line">    include       mime.types;</span><br><span class="line">    default_type  application/octet-stream;</span><br><span class="line">    sendfile        on;</span><br><span class="line">    keepalive_timeout  65;</span><br><span class="line"></span><br><span class="line">    client_header_buffer_size    1k;</span><br><span class="line">    large_client_header_buffers  4 4k;</span><br><span class="line"></span><br><span class="line">    # 配置负载均衡，weight代表权重，权重越高，分配到的可能就越搭</span><br><span class="line">    upstream 172.17.0.2 &#123;</span><br><span class="line"></span><br><span class="line">           server 172.17.0.2:8888 weight=5;</span><br><span class="line">           server 172.17.0.3:80   weight=4;</span><br><span class="line">           server 172.17.0.4:80   weight=3;</span><br><span class="line">    &#125;</span><br><span class="line">    # 配置反向代理</span><br><span class="line">    server &#123;</span><br><span class="line">           listen 80;</span><br><span class="line">           server_name 172.17.0.2;</span><br><span class="line">           location /&#123;</span><br><span class="line">              # 反向代理的主机头</span><br><span class="line">              proxy_pass  http://172.17.0.2;</span><br><span class="line">              proxy_set_header Host   $host;</span><br><span class="line">              proxy_set_header   X-Real-IP        $remote_addr;</span><br><span class="line">              proxy_set_header   X-Forwarded-For  $proxy_add_x_forwarded_for;</span><br><span class="line">           &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    # 侦听本地8888端口，以便为反向代理到本地的请求提供服务</span><br><span class="line">    server &#123;</span><br><span class="line">           listen       8888;</span><br><span class="line">           server_name  localhost;</span><br><span class="line">           # 如过没有对代理的链接形式有特殊要求，可以直接将root和index写在server中</span><br><span class="line">           location / &#123;</span><br><span class="line">               root   /home/html;</span><br><span class="line">               index  index.html index.htm;</span><br><span class="line">           &#125;</span><br><span class="line">          error_page   500 502 503 504  /50x.html;</span><br><span class="line">          location = /50x.html &#123;</span><br><span class="line">                 root   /home/html;</span><br><span class="line">         &#125;</span><br><span class="line">       &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在ser1这个容器中配置反向代理，要关注<code>server 172.17.0.2:8888 weight=5;</code>这一行，之所以反向代理到本机的8888端口，很好理解，因为若再次代理到80端口，永远不能代理到本机的服务中，陷入死循环。</p>
+<h4 id="以ser×作为服务器"><a href="#以ser×作为服务器" class="headerlink" title="以ser×作为服务器"></a>以ser×作为服务器</h4><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">user  nobody;</span></span><br><span class="line">worker_processes  1;</span><br><span class="line">events &#123;</span><br><span class="line">    worker_connections  1024;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">http &#123;</span><br><span class="line">    include       mime.types;</span><br><span class="line">    default_type  application/octet-stream;</span><br><span class="line">    sendfile        on;</span><br><span class="line">    keepalive_timeout  65;</span><br><span class="line"></span><br><span class="line">    client_header_buffer_size    1k;</span><br><span class="line">    large_client_header_buffers  4 4k;</span><br><span class="line"></span><br><span class="line">    server &#123;</span><br><span class="line">           listen       80;</span><br><span class="line">           server_name  172.17.0.2;</span><br><span class="line">           # 如过没有对代理的链接形式有特殊要求，可以直接将root和index写在server中</span><br><span class="line">           location / &#123;</span><br><span class="line">               root   /home/html;</span><br><span class="line">               index  index.html index.htm;</span><br><span class="line">           &#125;</span><br><span class="line">          error_page   500 502 503 504  /50x.html;</span><br><span class="line">          location = /50x.html &#123;</span><br><span class="line">                 root   /home/html;</span><br><span class="line">         &#125;</span><br><span class="line">       &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>serx和ser1的区别就在于http的设置，没有upstream，server_name 为要负载的服务器的ip。修改好配置文件后，使用<code>nginx -s reload</code>重新载入配置。  </p>
+<h3 id="四-刷新网页测试"><a href="#四-刷新网页测试" class="headerlink" title="(四) 刷新网页测试"></a>(四) 刷新网页测试</h3><ul>
+<li>修改三个ser中的index.html,方便观察</li>
+<li>在浏览器中打开 localhost:8881 或者 172.17.0.2，刷新网页<blockquote>
+<p>不断刷新，可以看到会打开不同容器中的index页面，说明服务被Nginx均衡地分配到不同的service上，这就是Nginx的负载均衡的作用。</p>
+</blockquote>
+</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:  </strong>木陽
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link: </strong>
+    <a href="http://atomicer.cn/2016/10/12/%E4%BD%BF%E7%94%A8Docker%E5%8A%A0Nginx%E6%A8%A1%E6%8B%9F%E5%AE%9E%E7%8E%B0%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1/" title="使用Docker+Nginx模拟负载均衡">http://atomicer.cn/2016/10/12/使用Docker加Nginx模拟实现负载均衡/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" rel="noopener" target="_blank"><i class="fa fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/Nginx/" rel="tag"><i class="fa fa-tag"></i> Nginx</a>
+              <a href="/tags/Docker/" rel="tag"><i class="fa fa-tag"></i> Docker</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2016/09/30/Python%E4%B8%AD%E5%A4%9A%E7%BA%BF%E7%A8%8B%E5%92%8C%E5%A4%9A%E8%BF%9B%E7%A8%8B%E7%9A%84%E5%AF%B9%E6%AF%94/" rel="prev" title="Python中单线程、多线程与多进程的效率对比实验">
+      <i class="fa fa-chevron-left"></i> Python中单线程、多线程与多进程的效率对比实验
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2016/11/11/%E4%BB%8E%E7%90%86%E8%A7%A3volatile%E7%9A%84%E5%86%85%E5%AD%98%E8%AF%AD%E4%B9%89%E5%AE%9E%E7%8E%B0%E5%88%B0Java%E4%B8%AD%E9%94%81%E5%AE%9E%E7%8E%B0%E7%9A%84%E6%80%9D%E8%80%83/" rel="next" title="从理解volatile的内存语义实现到Java的锁实现的思考">
+      从理解volatile的内存语义实现到Java的锁实现的思考 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#一-系统环境"><span class="nav-number">1.</span> <span class="nav-text">(一) 系统环境</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#二-准备Nginx环境"><span class="nav-number">2.</span> <span class="nav-text">(二) 准备Nginx环境</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Dockerfile"><span class="nav-number">2.1.</span> <span class="nav-text">Dockerfile</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#supervisor-conf"><span class="nav-number">2.2.</span> <span class="nav-text">supervisor.conf</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#三-启动Nginx服务"><span class="nav-number">3.</span> <span class="nav-text">(三) 启动Nginx服务</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#通过镜像启动三个nginx服务"><span class="nav-number">3.1.</span> <span class="nav-text">通过镜像启动三个nginx服务</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#以ser1作为主服务器，进入容器内修改nginx配置文件"><span class="nav-number">3.2.</span> <span class="nav-text">以ser1作为主服务器，进入容器内修改nginx配置文件</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#以ser×作为服务器"><span class="nav-number">3.3.</span> <span class="nav-text">以ser×作为服务器</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#四-刷新网页测试"><span class="nav-number">4.</span> <span class="nav-text">(四) 刷新网页测试</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="木陽"
+      src="/mine.jpg">
+  <p class="site-author-name" itemprop="name">木陽</p>
+  <div class="site-description" itemprop="description">木之陽兮  卿云烂兮</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">32</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">16</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">50</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/raomuyang" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;raomuyang" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="http://mail.qq.com/cgi-bin/qm_share?t=qm_mailme&email=RzUmKCoiKSApJikHISg-KiYuK2kkKCo" title="E-Mail → http:&#x2F;&#x2F;mail.qq.com&#x2F;cgi-bin&#x2F;qm_share?t&#x3D;qm_mailme&amp;email&#x3D;RzUmKCoiKSApJikHISg-KiYuK2kkKCo" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="/atom.xml" title="RSS → &#x2F;atom.xml"><i class="fa fa-fw fa-rss"></i>RSS</a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+  <div class="beian"><a href="http://www.beian.miit.gov.cn/" rel="noopener" target="_blank">赣ICP备16004083号 </a>
+  </div>
+
+<div class="copyright">
+  
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">木陽  使用<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">(CC) BY-NC-SA</a> 许可发布</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+  <script>
+    (function(){
+      var bp = document.createElement('script');
+      var curProtocol = window.location.protocol.split(':')[0];
+      bp.src = (curProtocol === 'https') ? 'https://zz.bdstatic.com/linksubmit/push.js' : 'http://push.zhanzhang.baidu.com/push.js';
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(bp, s);
+    })();
+  </script>
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

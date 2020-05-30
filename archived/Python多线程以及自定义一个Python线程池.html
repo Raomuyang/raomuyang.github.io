@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon.png">
+  <link rel="mask-icon" href="/favicon.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://atomicer.cn').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="网上许多人说Python多线程的性能不好，我觉得应该是“相对”吧，而且性能好不好也要视程序员设计代码的情况而定。我查了一些资料，Python运行在解释器中，有一个全局锁（GIL），不使用使用多进程的话就不能发挥多核的优势。所以，如果多线程的进程是CPU密集型的，那多线程并不能有多少效率上的提升，相反还可能会因为线程的频繁切换，导致效率下降，推荐使用多进程；如果是IO密集型，多线程进程可以利用IO">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Python多线程以及自定义一个Python线程池">
+<meta property="og:url" content="http://atomicer.cn/archived/Python%E5%A4%9A%E7%BA%BF%E7%A8%8B%E4%BB%A5%E5%8F%8A%E8%87%AA%E5%AE%9A%E4%B9%89%E4%B8%80%E4%B8%AAPython%E7%BA%BF%E7%A8%8B%E6%B1%A0.html">
+<meta property="og:site_name" content="木陽">
+<meta property="og:description" content="网上许多人说Python多线程的性能不好，我觉得应该是“相对”吧，而且性能好不好也要视程序员设计代码的情况而定。我查了一些资料，Python运行在解释器中，有一个全局锁（GIL），不使用使用多进程的话就不能发挥多核的优势。所以，如果多线程的进程是CPU密集型的，那多线程并不能有多少效率上的提升，相反还可能会因为线程的频繁切换，导致效率下降，推荐使用多进程；如果是IO密集型，多线程进程可以利用IO">
+<meta property="article:published_time" content="2016-05-06T15:29:57.000Z">
+<meta property="article:modified_time" content="2020-05-30T09:25:26.300Z">
+<meta property="article:author" content="木陽">
+<meta property="article:tag" content="Python">
+<meta property="article:tag" content="多线程">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://atomicer.cn/archived/Python%E5%A4%9A%E7%BA%BF%E7%A8%8B%E4%BB%A5%E5%8F%8A%E8%87%AA%E5%AE%9A%E4%B9%89%E4%B8%80%E4%B8%AAPython%E7%BA%BF%E7%A8%8B%E6%B1%A0">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: false,
+    isPage: true,
+    isArchive: false
+  };
+</script>
+
+  <title>Python多线程以及自定义一个Python线程池 | 木陽
+  </title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-82755477-1"></script>
+    <script>
+      if (CONFIG.hostname === location.hostname) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-82755477-1');
+      }
+    </script>
+
+
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?28428a78c9ad21d09428f89378d9c50b";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">木陽</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <h1 class="site-subtitle" itemprop="description">木之陽兮  卿云烂兮</h1>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>Categories</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>Search
+        </a>
+      </li>
+  </ul>
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="none"
+           placeholder="Searching..." spellcheck="false"
+           type="text" id="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+  
+  
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+    
+    
+    
+    <div class="post-block" lang="zh-Hans">
+      <header class="post-header">
+
+<h2 class="post-title" itemprop="name headline">Python多线程以及自定义一个Python线程池
+</h2>
+
+<div class="post-meta">
+  
+
+</div>
+
+</header>
+
+      
+      
+      
+      <div class="post-body">
+          <blockquote>
+<p>网上许多人说Python多线程的性能不好，我觉得应该是“相对”吧，而且性能好不好也要视程序员设计代码的情况而定。我查了一些资料，Python运行在解释器中，有一个全局锁（GIL），不使用使用多进程的话就不能发挥多核的优势。所以，如果多线程的进程是<strong>CPU密集型</strong>的，那多线程并不能有多少效率上的提升，相反还可能会因为线程的频繁切换，导致效率下降，推荐使用多进程；如果是<strong>IO密集型</strong>，多线程进程可以利用IO阻塞等待时的空闲时间执行其他线程，提升效率。</p>
+</blockquote>
+<h4 id="以下是python的多线程的使用，以及如何简单地设计一个线程池。"><a href="#以下是python的多线程的使用，以及如何简单地设计一个线程池。" class="headerlink" title="以下是python的多线程的使用，以及如何简单地设计一个线程池。"></a>以下是python的多线程的使用，以及如何简单地设计一个线程池。<br></h4><p>在这里我们可以看到，线程池是模仿操作系统中的FIFO（先进先出）的任务调度实现。</p>
+<ul>
+<li><p>定义两个队列，一个存储正在运行的任务，一个存储排队等待的任务。</p>
+</li>
+<li><p>定义一个最大并行任务数MAX_RUN，决定线程池的容量，MAX_WAIT,限制等待队列的长度</p>
+</li>
+<li><p>通过一个轮询线程，周期性地扫描是否有任务结束</p>
+</li>
+<li><p>通过另一个线程，调度正在排队等待的任务</p>
+<a id="more"></a>
+<p>下面是实现代码</p>
+</li>
+<li><h4 id="引入time、-threading相关的库"><a href="#引入time、-threading相关的库" class="headerlink" title="引入time、 threading相关的库"></a>引入time、 threading相关的库</h4><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> time</span><br><span class="line"><span class="keyword">import</span> os</span><br><span class="line"><span class="keyword">from</span> threading <span class="keyword">import</span> Thread, activeCount, Condition, Lock, Semaphore;</span><br></pre></td></tr></table></figure>
+</li>
+<li><h4 id="线程池的实现"><a href="#线程池的实现" class="headerlink" title="线程池的实现"></a>线程池的实现</h4><h5 id="关于线程同步"><a href="#关于线程同步" class="headerlink" title="关于线程同步"></a>关于线程同步</h5><blockquote>
+<ul>
+<li>锁： python的list是非线程安全的，所以用到互斥锁来同步线程对waitQueue和runTask的操作</li>
+<li>信号量： 这里我在限制最多加入等待队列的任务数时，使用了资源信号量semphore来同步调度和回收线程，注释部分也保留了之前通过对象内共享的内存中self.waitingTasks的长度来判断是在调度任务时否阻塞线程。因为没有大量测试，这里不讨论哪种实现性能会更佳，就给出两种实现方式。[semaphore和是内核对象（但python中如何实现我还不太清除），并且特别占用系统资源，线程的同步包括用户模式下的同步和内核模式下的同步，如果用内核对象来同步被保护的资源，系统需要从用户模式切换到内核模式，这个时间大概是1000个cpu周期]</li>
+</ul>
+</blockquote>
+</li>
+</ul>
+<h5 id="线程池的结构"><a href="#线程池的结构" class="headerlink" title="线程池的结构"></a>线程池的结构</h5><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># coding=utf-8</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ThreadPool</span>:</span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self, max_run=<span class="number">10</span>, max_wait=<span class="number">10000</span>)</span>:</span></span><br><span class="line">        self.MAX_WAIT = max_wait</span><br><span class="line">        self._MAX_RUN = max_run</span><br><span class="line">        self.wait_queue_semap = Semaphore(max_wait)</span><br><span class="line">        self._STOP_TIME = <span class="number">60</span> * <span class="number">60</span></span><br><span class="line">        self.no_task_time = <span class="number">0</span></span><br><span class="line"></span><br><span class="line">        self._start = <span class="literal">True</span></span><br><span class="line">        self._runningTasks = []</span><br><span class="line">        self._waitingTasks = []</span><br><span class="line">        self._gcThread = Thread(target=self._taskGC)</span><br><span class="line">        self._gcThread.start()</span><br><span class="line">        self._dispatchThread = Thread(target=self._taskDispatch)</span><br><span class="line">        self._dispatchThread.start()</span><br><span class="line"></span><br><span class="line">        self._lock = Condition(Lock())</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">addTask</span><span class="params">(self, target, args)</span>:</span></span><br><span class="line">        <span class="string">'''资源不足时忙等，和信号量的原理相同'''</span></span><br><span class="line">        <span class="comment"># while self._waitingTasks.__len__() + 1 &gt; self.m:</span></span><br><span class="line">        <span class="comment">#     pass</span></span><br><span class="line"></span><br><span class="line">        self.wait_queue_semap.acquire()</span><br><span class="line">        <span class="keyword">if</span> self._lock.acquire():<span class="comment">#互斥锁</span></span><br><span class="line">            <span class="string">'''先将锁添加到等待队列中,剩下的事情由调度线程去完成'''</span></span><br><span class="line">            task = Task(target, args)</span><br><span class="line">            self._waitingTasks.append(task)</span><br><span class="line"></span><br><span class="line">            <span class="comment"># print("task wait",args)</span></span><br><span class="line">            self._lock.release()</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 不断地检测线程池中是否有退出的线程</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">_taskGC</span><span class="params">(self)</span>:</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">while</span> self._start:</span><br><span class="line">            <span class="string">'''remove the task in runningTasks'''</span></span><br><span class="line">            <span class="keyword">if</span> self._runningTasks.__len__() &gt; <span class="number">0</span>:</span><br><span class="line">                <span class="keyword">for</span> task <span class="keyword">in</span> self._runningTasks:</span><br><span class="line">                    <span class="keyword">if</span> <span class="keyword">not</span> task._thread.is_alive():</span><br><span class="line">                        print(<span class="string">"[task remove stop]--------&#123;0&#125;"</span>.format(task._args))</span><br><span class="line">                        self._runningTasks.remove(task)</span><br><span class="line">                    <span class="string">'''这里我本来想为每个任务设置时间片，令其移除任务，但是一直找不到合适的办法结束线程'''</span></span><br><span class="line">                    <span class="comment"># else:</span></span><br><span class="line">                    <span class="comment">#      if task.getTimeUsed() &gt; self.MAX_TIME_BLOCK:</span></span><br><span class="line">                    <span class="comment">#          print("task remove timeout",task._args)</span></span><br><span class="line">                    <span class="comment">#          task._thread.stop()</span></span><br><span class="line">                    <span class="comment">#          self.runningTasks.remove(task)</span></span><br><span class="line"></span><br><span class="line">            <span class="keyword">if</span>(self._runningTasks.__len__() &gt; <span class="number">0</span> <span class="keyword">or</span> self._waitingTasks.__len__() &gt; <span class="number">0</span>):</span><br><span class="line">                self.no_task_time = <span class="number">0</span></span><br><span class="line">            <span class="keyword">else</span>:</span><br><span class="line">                <span class="keyword">if</span> self.no_task_time == <span class="number">0</span>:</span><br><span class="line">                    self.no_task_time = time.time()</span><br><span class="line"></span><br><span class="line">            <span class="keyword">if</span>(self.no_task_time != <span class="number">0</span> <span class="keyword">and</span> int(time.time() - self.no_task_time) &gt; self._STOP_TIME):</span><br><span class="line">                self._start = <span class="literal">False</span></span><br><span class="line">                <span class="keyword">print</span> (<span class="string">"[INFO]----------exit"</span>)</span><br><span class="line">            print(<span class="string">"[wait]------------"</span> + str(self._waitingTasks.__len__()))</span><br><span class="line">            print(<span class="string">"[run]-------------"</span> + str(self._runningTasks.__len__()))</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">_taskDispatch</span><span class="params">(self)</span>:</span></span><br><span class="line">      <span class="string">'''当前执行的线程数不大于最大并行任务数，则将正在排队的等待任务队列中最前面的任务取出执行'''</span></span><br><span class="line">        <span class="keyword">while</span> self._start:</span><br><span class="line">            <span class="keyword">if</span> self._runningTasks.__len__() &lt; self._MAX_RUN:</span><br><span class="line">                <span class="keyword">if</span> self._waitingTasks.__len__() &gt; <span class="number">0</span>:</span><br><span class="line">                    task = self._waitingTasks.pop()</span><br><span class="line">                    task.start()</span><br><span class="line">                    <span class="string">'''释放信号量'''</span></span><br><span class="line">                    self.wait_queue_semap.release()</span><br><span class="line">                    self._runningTasks.append(task)</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">stop</span><span class="params">(self)</span>:</span></span><br><span class="line">        self._start = <span class="literal">False</span></span><br><span class="line">        os._exit(<span class="number">0</span>)</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">getWaits</span><span class="params">(self)</span>:</span></span><br><span class="line">        <span class="keyword">return</span> self._waitingTasks</span><br></pre></td></tr></table></figure>
+<ul>
+<li><h4 id="定义任务的结构。将方法和参数作为任务传入，实例化为任务对象，然后可以将其添加到排队等待序列"><a href="#定义任务的结构。将方法和参数作为任务传入，实例化为任务对象，然后可以将其添加到排队等待序列" class="headerlink" title="定义任务的结构。将方法和参数作为任务传入，实例化为任务对象，然后可以将其添加到排队等待序列"></a>定义任务的结构。将方法和参数作为任务传入，实例化为任务对象，然后可以将其添加到排队等待序列</h4><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Task</span>:</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self,_target,_args)</span>:</span></span><br><span class="line">        self._beginTime = time.time()</span><br><span class="line">        self._args = _args</span><br><span class="line">        self._thread = Thread(target=_target,args=_args)</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">getTimeUsed</span><span class="params">(self)</span>:</span></span><br><span class="line">        <span class="keyword">return</span> time.time() - self._beginTime</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">start</span><span class="params">(self)</span>:</span></span><br><span class="line">        self._thread.start()</span><br></pre></td></tr></table></figure>
+</li>
+<li><h4 id="最后，通过一小段demo来验证我们的线程池"><a href="#最后，通过一小段demo来验证我们的线程池" class="headerlink" title="最后，通过一小段demo来验证我们的线程池"></a>最后，通过一小段demo来验证我们的线程池</h4></li>
+</ul>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> __name__ == <span class="string">'__main__'</span>:</span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">test</span><span class="params">(i)</span>:</span></span><br><span class="line">        print(i)</span><br><span class="line">        time.sleep(<span class="number">10</span>)</span><br><span class="line"></span><br><span class="line">    pool = ThreadPool(<span class="number">10</span>,<span class="number">10</span>)</span><br><span class="line">    arg = [<span class="number">0</span>,<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>,<span class="number">4</span>,<span class="number">5</span>,<span class="number">6</span>,<span class="number">7</span>,<span class="number">8</span>,<span class="number">9</span>,<span class="number">10</span>,<span class="number">11</span>,<span class="number">12</span>,<span class="number">13</span>,<span class="number">14</span>,<span class="number">15</span>,<span class="number">16</span>,<span class="number">17</span>,<span class="number">18</span>,<span class="number">19</span>,<span class="number">20</span>]</span><br><span class="line">    <span class="keyword">for</span> i <span class="keyword">in</span> arg:</span><br><span class="line">        args = [i]</span><br><span class="line">        pool.addTask(test,args)</span><br></pre></td></tr></table></figure>
+
+      </div>
+      
+      
+      
+    </div>
+    
+
+    
+    
+    
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#以下是python的多线程的使用，以及如何简单地设计一个线程池。"><span class="nav-number">1.</span> <span class="nav-text">以下是python的多线程的使用，以及如何简单地设计一个线程池。
+</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#引入time、-threading相关的库"><span class="nav-number">2.</span> <span class="nav-text">引入time、 threading相关的库</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#线程池的实现"><span class="nav-number">3.</span> <span class="nav-text">线程池的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#关于线程同步"><span class="nav-number">3.1.</span> <span class="nav-text">关于线程同步</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#线程池的结构"><span class="nav-number">3.2.</span> <span class="nav-text">线程池的结构</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#定义任务的结构。将方法和参数作为任务传入，实例化为任务对象，然后可以将其添加到排队等待序列"><span class="nav-number">4.</span> <span class="nav-text">定义任务的结构。将方法和参数作为任务传入，实例化为任务对象，然后可以将其添加到排队等待序列</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#最后，通过一小段demo来验证我们的线程池"><span class="nav-number">5.</span> <span class="nav-text">最后，通过一小段demo来验证我们的线程池</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="木陽"
+      src="/mine.jpg">
+  <p class="site-author-name" itemprop="name">木陽</p>
+  <div class="site-description" itemprop="description">木之陽兮  卿云烂兮</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">32</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">16</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">50</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/raomuyang" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;raomuyang" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="http://mail.qq.com/cgi-bin/qm_share?t=qm_mailme&email=RzUmKCoiKSApJikHISg-KiYuK2kkKCo" title="E-Mail → http:&#x2F;&#x2F;mail.qq.com&#x2F;cgi-bin&#x2F;qm_share?t&#x3D;qm_mailme&amp;email&#x3D;RzUmKCoiKSApJikHISg-KiYuK2kkKCo" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="/atom.xml" title="RSS → &#x2F;atom.xml"><i class="fa fa-fw fa-rss"></i>RSS</a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+  <div class="beian"><a href="http://www.beian.miit.gov.cn/" rel="noopener" target="_blank">赣ICP备16004083号 </a>
+  </div>
+
+<div class="copyright">
+  
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">木陽  使用<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">(CC) BY-NC-SA</a> 许可发布</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+  <script>
+    (function(){
+      var bp = document.createElement('script');
+      var curProtocol = window.location.protocol.split(':')[0];
+      bp.src = (curProtocol === 'https') ? 'https://zz.bdstatic.com/linksubmit/push.js' : 'http://push.zhanzhang.baidu.com/push.js';
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(bp, s);
+    })();
+  </script>
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

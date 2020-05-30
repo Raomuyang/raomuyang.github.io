@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon.png">
+  <link rel="mask-icon" href="/favicon.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://atomicer.cn').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="1.开始使用Spring MVC 【1】. 配置web.xml以及在web.xml中配置DispatcherServlet：  12345678910111213141516171819202122232425262728293031 &lt;context-param&gt;		&lt;param-name&gt;contextConfigLocation&lt;&#x2F;param-name&gt;">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Spring MVC的一些学习笔记-入门配置和HttpMessageConverter">
+<meta property="og:url" content="http://atomicer.cn/2016/03/30/Spring-MVC%E7%9A%84%E4%B8%80%E4%BA%9B%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0-%E5%85%A5%E9%97%A8%E9%85%8D%E7%BD%AE%E5%92%8CHttpMessageConverter/index.html">
+<meta property="og:site_name" content="木陽">
+<meta property="og:description" content="1.开始使用Spring MVC 【1】. 配置web.xml以及在web.xml中配置DispatcherServlet：  12345678910111213141516171819202122232425262728293031 &lt;context-param&gt;		&lt;param-name&gt;contextConfigLocation&lt;&#x2F;param-name&gt;">
+<meta property="article:published_time" content="2016-03-30T08:23:11.000Z">
+<meta property="article:modified_time" content="2020-05-30T09:25:26.300Z">
+<meta property="article:author" content="木陽">
+<meta property="article:tag" content="Spring MVC">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://atomicer.cn/2016/03/30/Spring-MVC%E7%9A%84%E4%B8%80%E4%BA%9B%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0-%E5%85%A5%E9%97%A8%E9%85%8D%E7%BD%AE%E5%92%8CHttpMessageConverter/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>Spring MVC的一些学习笔记-入门配置和HttpMessageConverter | 木陽</title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-82755477-1"></script>
+    <script>
+      if (CONFIG.hostname === location.hostname) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-82755477-1');
+      }
+    </script>
+
+
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?28428a78c9ad21d09428f89378d9c50b";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">木陽</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <h1 class="site-subtitle" itemprop="description">木之陽兮  卿云烂兮</h1>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>Categories</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>Search
+        </a>
+      </li>
+  </ul>
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="none"
+           placeholder="Searching..." spellcheck="false"
+           type="text" id="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="http://atomicer.cn/2016/03/30/Spring-MVC%E7%9A%84%E4%B8%80%E4%BA%9B%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0-%E5%85%A5%E9%97%A8%E9%85%8D%E7%BD%AE%E5%92%8CHttpMessageConverter/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/mine.jpg">
+      <meta itemprop="name" content="木陽">
+      <meta itemprop="description" content="木之陽兮  卿云烂兮">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="木陽">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          Spring MVC的一些学习笔记-入门配置和HttpMessageConverter
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2016-03-30 08:23:11" itemprop="dateCreated datePublished" datetime="2016-03-30T08:23:11+00:00">2016-03-30</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Spring/" itemprop="url" rel="index">
+                    <span itemprop="name">Spring</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Spring/Java/" itemprop="url" rel="index">
+                    <span itemprop="name">Java</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="1-开始使用Spring-MVC"><a href="#1-开始使用Spring-MVC" class="headerlink" title="1.开始使用Spring MVC"></a>1.开始使用Spring MVC</h2><blockquote>
+<h4 id="【1】-配置web-xml以及在web-xml中配置DispatcherServlet："><a href="#【1】-配置web-xml以及在web-xml中配置DispatcherServlet：" class="headerlink" title="【1】. 配置web.xml以及在web.xml中配置DispatcherServlet："></a>【1】. 配置web.xml以及在web.xml中配置DispatcherServlet：</h4></blockquote>
+<blockquote>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"> <span class="tag">&lt;<span class="name">context-param</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">param-name</span>&gt;</span>contextConfigLocation<span class="tag">&lt;/<span class="name">param-name</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">!—此处指定applicationContext等配置文件的位置--</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">param-value</span>&gt;</span>classpath:org.package.example<span class="tag">&lt;/<span class="name">param-value</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/ <span class="attr">context-param</span> &gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">listener</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">listener-class</span>&gt;</span></span><br><span class="line">           org.springframework.web.context.ContextLoaderListener</span><br><span class="line">		<span class="tag">&lt;/<span class="name">listener-class</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">listener</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">servlet</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">servlet-name</span>&gt;</span>此处定义一个名字<span class="tag">&lt;/<span class="name">servlet-name</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">servlet-class</span>&gt;</span></span><br><span class="line">				org.springframework.web.servlet.DispatcherServlet</span><br><span class="line">		<span class="tag">&lt;/<span class="name">servlet-class</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">load-on-start</span>&gt;</span>1<span class="tag">&lt;/<span class="name">load-on-start</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">!—以下这段可以不配置--</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">init-param</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">param-name</span>&gt;</span></span><br><span class="line">			 	&lt;!—使用这个指定的话，servlet文件的名字就不是&lt;servlet-name&gt;-servlet.xml，而是servlet-name.xml--&gt;</span><br><span class="line">			<span class="tag">&lt;/<span class="name">param-name</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">param-value</span>&gt;</span></span><br><span class="line">				<span class="tag">&lt;<span class="name">!—指定DispatcherServlet的路径--</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;/<span class="name">param-value</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;/<span class="name">init-param</span>&gt;</span>		</span><br><span class="line"><span class="tag">&lt;/<span class="name">servlet</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">servlet-mapping</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">servlet-name</span>&gt;</span>servlet-name<span class="tag">&lt;<span class="name">servlet-name</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">url-pattern</span>&gt;</span>*.x(如*.html等)<span class="tag">&lt;/<span class="name">url-pattern</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">!-指定处理某种后缀的http请求类型--</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">servlet-mapping</span>&gt;</span> </span><br></pre></td></tr></table></figure>
+</blockquote>
+<a id="more"></a>
+<blockquote>
+<p>在applicationContext等配置文件中，在最顶上要用到一下这句启动spring容器扫描类包，让注解生效</p>
+</blockquote>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!-- 扫描类包，将标注Spring注解的类自动转化Bean，同时完成Bean的注入 --&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">context:component-scan</span> <span class="attr">base-package</span>=<span class="string">"cn.jxufe"</span>/&gt;</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<blockquote>
+<h4 id="【2】-在-servlet-xml中配置SpringMVC配置文件，定义视图名称解析器"><a href="#【2】-在-servlet-xml中配置SpringMVC配置文件，定义视图名称解析器" class="headerlink" title="【2】. 在-servlet.xml中配置SpringMVC配置文件，定义视图名称解析器"></a>【2】. 在<servlet-name>-servlet.xml中配置SpringMVC配置文件，定义视图名称解析器</h4></blockquote>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">bean</span></span></span><br><span class="line"><span class="tag">	<span class="attr">class</span>=<span class="string">”</span> <span class="attr">org.springframework.web.servlet.view.InternalResourceViewResolver</span>”&gt;</span></span><br><span class="line">		p:prefix="/WEB-INF/views"    <span class="tag">&lt;<span class="name">!-设置前缀--</span>&gt;</span></span><br><span class="line">		p:suffix=".jsp" 			 <span class="tag">&lt;<span class="name">!-设置后缀--</span>&gt;</span></span><br><span class="line">/&gt;</span><br></pre></td></tr></table></figure>
+<hr>
+<blockquote>
+<h4 id="【3】-编写处理请求的控制器Controller"><a href="#【3】-编写处理请求的控制器Controller" class="headerlink" title="【3】.编写处理请求的控制器Controller"></a>【3】.编写处理请求的控制器Controller</h4></blockquote>
+<ul>
+<li>使用<code>@Controller</code>将一个POJO类转换为处理请求的控制器</li>
+<li>使用<code>@RequestMapping</code>映射请求并指定某个方法处理</li>
+<li>使用<code>@PathVariable</code>将URL中的{xxx}占位符绑定到处理方法的入参中</li>
+<li>使用<code>@RequestParam</code>将参数绑定到入参中</li>
+<li>使用<code>@CookieValue</code>和<code>@RequestHeader</code>可以将Cookie和报文头属性绑定到入参中</li>
+<li>更多处理方法签名需查看资料</li>
+</ul>
+<blockquote>
+<p><strong>示例：</strong></p>
+</blockquote>
+<ul>
+<li><h5 id="Controller和-RequestMapping的简单示例"><a href="#Controller和-RequestMapping的简单示例" class="headerlink" title="@Controller和@RequestMapping的简单示例"></a>@Controller和@RequestMapping的简单示例</h5><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Controller</span></span><br><span class="line"><span class="meta">@RequestMapping</span>(“/user”)</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">UserController</span></span>&#123;</span><br><span class="line"></span><br><span class="line">	<span class="comment">//----------1</span></span><br><span class="line">	<span class="meta">@RequestMapping</span>(“/register”)</span><br><span class="line">	<span class="function"><span class="keyword">public</span> ModuleAndView <span class="title">register</span><span class="params">()</span></span>&#123;</span><br><span class="line">			ModuleAndView mav = <span class="keyword">new</span> ModuleAndView();</span><br><span class="line">			mav.setViewName(“user/register”);</span><br><span class="line">			<span class="keyword">return</span> mav;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="comment">//-------2</span></span><br><span class="line">	<span class="meta">@RequestMapping</span>(“/register”)</span><br><span class="line">	<span class="function"><span class="keyword">public</span> String <span class="title">register</span><span class="params">()</span></span>&#123;</span><br><span class="line">					<span class="keyword">return</span> “user/register”;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="comment">//----------------3</span></span><br><span class="line">	<span class="meta">@RequestMapping</span>(“/createUser”)</span><br><span class="line">	<span class="function"><span class="keyword">public</span> ModuleAndView <span class="title">createUser</span><span class="params">(User user)</span></span>&#123;</span><br><span class="line">			ModuleAndView mav = <span class="keyword">new</span> ModuleAndView();</span><br><span class="line">			mav.setViewName(“user/register”);</span><br><span class="line">			mav.addObject(“user”,user);</span><br><span class="line">			<span class="keyword">return</span> mav;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<blockquote>
+</blockquote>
+</li>
+<li>上面1和2两段代码是等价的，mvc可以自动将String转为mvc模型</li>
+<li>Register方法只能处理/user/register的请求</li>
+<li>代码3所示，说明mvc可以自动将表单数据按参数名和入参对象的属性绑定起来</li>
+<li>/user/**/{userId}表示处理/user/xxx/123或/user/xxx/xxx/123等请求</li>
+</ul>
+<blockquote>
+<ul>
+<li><h5 id="PathVariable将URL中的-xxx-占位符绑定到处理方法的入参中"><a href="#PathVariable将URL中的-xxx-占位符绑定到处理方法的入参中" class="headerlink" title="@PathVariable将URL中的{xxx}占位符绑定到处理方法的入参中"></a>@PathVariable将URL中的{xxx}占位符绑定到处理方法的入参中</h5></li>
+</ul>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//@RequestMapping("/equary/&#123;userid&#125;")</span></span><br><span class="line"><span class="meta">@RequestMapping</span>(value = <span class="string">"/equary/&#123;userid&#125;"</span>,method = RequestMethod.GET)</span><br><span class="line"><span class="meta">@ResponseBody</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> Object <span class="title">equary</span><span class="params">(@PathVariable(<span class="string">"userid"</span>)</span> String userid)</span>&#123;</span><br><span class="line">    System.out.println(<span class="string">"equary:"</span> + userid);</span><br><span class="line">    <span class="keyword">return</span> <span class="string">"success"</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<ul>
+<li><h5 id="RequestMapping的使用"><a href="#RequestMapping的使用" class="headerlink" title="@RequestMapping的使用"></a>@RequestMapping的使用</h5>（1）. 通过请求URL进行映射：@RequestMapping(value=”/user”)—-和不写value差不多<br>（2）. 通过请求参数、方法、头进行映射</li>
+</ul>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@RequestMapping</span>(value=”/user”,method=RequestMethod.POST,params=”userId”)</span><br><span class="line"><span class="function">Public String <span class="title">test</span><span class="params">(@RequestParam(“userId”)</span> String userId)</span>&#123;</span><br><span class="line"><span class="comment">//Public String test(@RequestParam(value=“userId”,required=false)String userId)&#123;</span></span><br><span class="line">	<span class="comment">//do sth</span></span><br><span class="line">	<span class="keyword">return</span> “user/index”;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>Required默认为true，改为false时表示请求中没有相应的参数也不会报错</p>
+</blockquote>
+<hr>
+<h2 id="2-使用HttpMessageConverter"><a href="#2-使用HttpMessageConverter" class="headerlink" title="2.使用HttpMessageConverter"></a>2.使用HttpMessageConverter<T></h2><blockquote>
+<h6 id="1-HttpMessageConverter的介绍"><a href="#1-HttpMessageConverter的介绍" class="headerlink" title="(1).HttpMessageConverter的介绍"></a>(1).HttpMessageConverter的介绍</h6></blockquote>
+<p><strong>HttpMessageConverter</strong> 负责将请求信息转换为一个对象。在Spring中默认的<code>AnnotationMethodHandlerAdapter</code>默认装配了以下的HttpMessageConverter：</p>
+<ul>
+<li>StringHttpMessageConverter</li>
+<li>ByteArrayHttpMessageConverter，</li>
+<li>SourceHttpMessageConverter</li>
+<li>XmlAwareFromHttpMessageConverter</li>
+</ul>
+<p>如果还需装配其它的HttpMessageConverter，则需要在<servlet-name>-servlet.xml这个web容器中显式地定义</p>
+<blockquote>
+<p><strong>示例：</strong></p>
+</blockquote>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">!—定义一个AnnotationMethodHandlerAdapter</span> <span class="attr">--</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">bean</span></span></span><br><span class="line"><span class="tag">	<span class="attr">class</span>=<span class="string">”org.springframework.web.servlet.mvc.annotation.AnnotationMethodHandlerAdapter”</span></span></span><br><span class="line"><span class="tag">	<span class="attr">p:messageConverters-ref</span>=<span class="string">”messageConverters”/</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">!—定义HttpMessageConverter列表</span> <span class="attr">--</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">util:list</span> <span class="attr">id</span>=<span class="string">”</span> <span class="attr">messageConverters</span>”&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">bean</span></span></span><br><span class="line"><span class="tag">	 <span class="attr">class</span>=<span class="string">”org.springframework.http.converter.BufferedImageHttpMessageConverter”/</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">bean</span></span></span><br><span class="line"><span class="tag">	 <span class="attr">class</span>=<span class="string">”org.springframework.http.converter.BufferedImageHttpMessageConverter”/</span>&gt;</span></span><br><span class="line">	 ...</span><br><span class="line">		<span class="tag">&lt;<span class="name">!-…更多都可以在这里定义--</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">util:list</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>在容器中显示定义的AnnotationMethodHandlerAdapter会覆盖掉默认的，，所以默认的四个HttpMessageConverter还需重新装配</p>
+<blockquote>
+<h6 id="（2）使用HttpMessageConverter"><a href="#（2）使用HttpMessageConverter" class="headerlink" title="（2）使用HttpMessageConverter"></a>（2）使用HttpMessageConverter</h6></blockquote>
+<ul>
+<li>使用@RequestBody和@ResponseBody进行标注</li>
+<li>使用HttpEntity<T>/ResponseEntity<T>作为处理方法的入参和返回值</li>
+</ul>
+<p><strong>示例：</strong></p>
+<blockquote>
+<h6 id="【1】-RequestBody和-ResponseBody的使用"><a href="#【1】-RequestBody和-ResponseBody的使用" class="headerlink" title="【1】@RequestBody和@ResponseBody的使用"></a>【1】@RequestBody和@ResponseBody的使用</h6></blockquote>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@RequestMapping</span>(“handle1”)</span><br><span class="line"><span class="function">Public String <span class="title">handle1</span><span class="params">(@RequestBody String requestBody)</span></span>&#123;</span><br><span class="line">	System.out.println(requestBody);</span><br><span class="line">	Return “success”;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>handle1通过@RequestBody自动将请求的报文转换为字符串绑定到requestBody入参中</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@ResponseBody</span></span><br><span class="line"><span class="meta">@RequestMapping</span>(value=”/handle2/&#123;imageId&#125;”)</span><br><span class="line"><span class="keyword">public</span> <span class="keyword">byte</span>[] handle2(<span class="meta">@PathVariable</span>(“imageId”) String imageId) <span class="keyword">throws</span> IOException&#123;</span><br><span class="line">	System.out.println(“Load image of ”+imageId);</span><br><span class="line">	Resource res=<span class="keyword">new</span> ClassPathResource(“/image”+imageId+”.jpg”);</span><br><span class="line">	<span class="keyword">byte</span>[] fileData=FileCopyUtils.copyToByteArray(res.getInputStream());</span><br><span class="line">	<span class="keyword">return</span> fileData;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>handle2在方法体中读取一张图片，并将图片作为输出流返回，而@ResponseBody的标识即可将该返回值输出到相应流中，客户端将显示这张图片。<br><strong>内部流程：</strong>在handle1方法中，MVC根据@RequestBody的标注查找到相应的HttpMessageConverter，将请求信息转换绑定到requestBody入参上。handle2方法最顶上拥有一个@ResponseBody的注解，返回值为byte[]，spring mvc会根据返回值类型匹配ByteArrayHttpMessageConverter对返回值进行处理，由此将图片数据流输出到客户端</p>
+<blockquote>
+<h6 id="【2】HttpEntity和ResponseEntity"><a href="#【2】HttpEntity和ResponseEntity" class="headerlink" title="【2】HttpEntity和ResponseEntity"></a>【2】<code>HttpEntity</code>和<code>ResponseEntity</code></h6></blockquote>
+<p>和<code>@RequestBody</code>/<code>@ResponseBody</code>类似，<strong>HttpEntity&lt;?&gt;</strong>不但可以访问请求及响应报文体的数据，还可以访问请求和响应报文头的数据。Spring mvc根据&lt;?&gt;泛型类型查找对应的HttpMessageConverter.</p>
+<blockquote>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@RequestMapping</span>(“/handle”)</span><br><span class="line"> <span class="function">Public String <span class="title">handle</span><span class="params">(HttpEntity&lt;String&gt; httpentity)</span></span>&#123;</span><br><span class="line"> 	<span class="keyword">long</span> contentLen = httpEntity.getHeaders().getContentLength();</span><br><span class="line"> 	System.out.println(httpEntity.getBody());</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+<p>以上，SpringMVC会使用StringHttpMessageConverter将请求报文体及报文头的信息绑定到httpEntity中，在方法体内可以对相应的信息进行访问</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@RequestMapping</span>(value=”/handle/&#123;imageId&#125;”)</span><br><span class="line"><span class="keyword">public</span> ResopnseEntity&lt;<span class="keyword">byte</span>[]&gt; handle(<span class="meta">@PathVariable</span>(“imageId”) String imageId)</span><br><span class="line"><span class="keyword">throws</span> Throwable&#123;</span><br><span class="line">				Resource res = <span class="keyword">new</span> ClassPathResource(“/image”+imageId+”.jpg”);</span><br><span class="line"><span class="keyword">byte</span>[] fileData=FileCopyUtil.copyToByteArray(res.getInputStream());</span><br><span class="line">ResponseEntity&lt;<span class="keyword">byte</span>[]&gt; responseEntity=</span><br><span class="line"><span class="keyword">new</span> ResponseEntity&lt;<span class="keyword">byte</span>[]&gt;(fileDate,HttpStatus.OK);</span><br><span class="line"><span class="keyword">return</span> responseEntity;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>返回值设置为ResponseEntity的泛型，泛型类型为byte[]，将输出流放入到ResponseEntity中，SpringMVC会自动匹配相应的HttpMessageConverter。效果和@ResponseBody一样。</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:  </strong>木陽
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link: </strong>
+    <a href="http://atomicer.cn/2016/03/30/Spring-MVC%E7%9A%84%E4%B8%80%E4%BA%9B%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0-%E5%85%A5%E9%97%A8%E9%85%8D%E7%BD%AE%E5%92%8CHttpMessageConverter/" title="Spring MVC的一些学习笔记-入门配置和HttpMessageConverter">http://atomicer.cn/2016/03/30/Spring-MVC的一些学习笔记-入门配置和HttpMessageConverter/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" rel="noopener" target="_blank"><i class="fa fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/Spring-MVC/" rel="tag"><i class="fa fa-tag"></i> Spring MVC</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item"></div>
+      <div class="post-nav-item">
+    <a href="/2016/03/30/Spring%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0-AOP/" rel="next" title="Spring学习笔记-AOP,配置切面和声明事务">
+      Spring学习笔记-AOP,配置切面和声明事务 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-开始使用Spring-MVC"><span class="nav-number">1.</span> <span class="nav-text">1.开始使用Spring MVC</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#【1】-配置web-xml以及在web-xml中配置DispatcherServlet："><span class="nav-number">1.0.1.</span> <span class="nav-text">【1】. 配置web.xml以及在web.xml中配置DispatcherServlet：</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#【2】-在-servlet-xml中配置SpringMVC配置文件，定义视图名称解析器"><span class="nav-number">1.0.2.</span> <span class="nav-text">【2】. 在-servlet.xml中配置SpringMVC配置文件，定义视图名称解析器</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#【3】-编写处理请求的控制器Controller"><span class="nav-number">1.0.3.</span> <span class="nav-text">【3】.编写处理请求的控制器Controller</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#Controller和-RequestMapping的简单示例"><span class="nav-number">1.0.3.1.</span> <span class="nav-text">@Controller和@RequestMapping的简单示例</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#PathVariable将URL中的-xxx-占位符绑定到处理方法的入参中"><span class="nav-number">1.0.3.2.</span> <span class="nav-text">@PathVariable将URL中的{xxx}占位符绑定到处理方法的入参中</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#RequestMapping的使用"><span class="nav-number">1.0.3.3.</span> <span class="nav-text">@RequestMapping的使用</span></a></li></ol></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-使用HttpMessageConverter"><span class="nav-number">2.</span> <span class="nav-text">2.使用HttpMessageConverter</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#1-HttpMessageConverter的介绍"><span class="nav-number">2.0.0.0.1.</span> <span class="nav-text">(1).HttpMessageConverter的介绍</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#（2）使用HttpMessageConverter"><span class="nav-number">2.0.0.0.2.</span> <span class="nav-text">（2）使用HttpMessageConverter</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#【1】-RequestBody和-ResponseBody的使用"><span class="nav-number">2.0.0.0.3.</span> <span class="nav-text">【1】@RequestBody和@ResponseBody的使用</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#【2】HttpEntity和ResponseEntity"><span class="nav-number">2.0.0.0.4.</span> <span class="nav-text">【2】HttpEntity和ResponseEntity</span></a></li></ol></li></ol></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="木陽"
+      src="/mine.jpg">
+  <p class="site-author-name" itemprop="name">木陽</p>
+  <div class="site-description" itemprop="description">木之陽兮  卿云烂兮</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">32</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">16</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">50</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/raomuyang" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;raomuyang" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="http://mail.qq.com/cgi-bin/qm_share?t=qm_mailme&email=RzUmKCoiKSApJikHISg-KiYuK2kkKCo" title="E-Mail → http:&#x2F;&#x2F;mail.qq.com&#x2F;cgi-bin&#x2F;qm_share?t&#x3D;qm_mailme&amp;email&#x3D;RzUmKCoiKSApJikHISg-KiYuK2kkKCo" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="/atom.xml" title="RSS → &#x2F;atom.xml"><i class="fa fa-fw fa-rss"></i>RSS</a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+  <div class="beian"><a href="http://www.beian.miit.gov.cn/" rel="noopener" target="_blank">赣ICP备16004083号 </a>
+  </div>
+
+<div class="copyright">
+  
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">木陽  使用<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">(CC) BY-NC-SA</a> 许可发布</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+  <script>
+    (function(){
+      var bp = document.createElement('script');
+      var curProtocol = window.location.protocol.split(':')[0];
+      bp.src = (curProtocol === 'https') ? 'https://zz.bdstatic.com/linksubmit/push.js' : 'http://push.zhanzhang.baidu.com/push.js';
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(bp, s);
+    })();
+  </script>
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

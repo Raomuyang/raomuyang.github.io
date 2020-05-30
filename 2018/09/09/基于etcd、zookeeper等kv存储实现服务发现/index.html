@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon.png">
+  <link rel="mask-icon" href="/favicon.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://atomicer.cn').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="github 源码地址：  suniper&#x2F;plum-mesh-agent  以之前完成的开源项目suniper-pma的代码实例为例，阐述一下我的服务发现和负载均衡框架是如何实现的 (注：下文中为了更好理解，所贴的代码在源代码的基础上做了一些修改)">
+<meta property="og:type" content="article">
+<meta property="og:title" content="基于Etcd&#x2F;zookeeper等kv存储实现服务发现">
+<meta property="og:url" content="http://atomicer.cn/2018/09/09/%E5%9F%BA%E4%BA%8Eetcd%E3%80%81zookeeper%E7%AD%89kv%E5%AD%98%E5%82%A8%E5%AE%9E%E7%8E%B0%E6%9C%8D%E5%8A%A1%E5%8F%91%E7%8E%B0/index.html">
+<meta property="og:site_name" content="木陽">
+<meta property="og:description" content="github 源码地址：  suniper&#x2F;plum-mesh-agent  以之前完成的开源项目suniper-pma的代码实例为例，阐述一下我的服务发现和负载均衡框架是如何实现的 (注：下文中为了更好理解，所贴的代码在源代码的基础上做了一些修改)">
+<meta property="article:published_time" content="2018-09-09T22:42:08.000Z">
+<meta property="article:modified_time" content="2020-05-30T09:25:26.300Z">
+<meta property="article:author" content="木陽">
+<meta property="article:tag" content="etcd">
+<meta property="article:tag" content="zookeeper">
+<meta property="article:tag" content="service-discovery">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://atomicer.cn/2018/09/09/%E5%9F%BA%E4%BA%8Eetcd%E3%80%81zookeeper%E7%AD%89kv%E5%AD%98%E5%82%A8%E5%AE%9E%E7%8E%B0%E6%9C%8D%E5%8A%A1%E5%8F%91%E7%8E%B0/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>基于Etcd/zookeeper等kv存储实现服务发现 | 木陽</title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-82755477-1"></script>
+    <script>
+      if (CONFIG.hostname === location.hostname) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-82755477-1');
+      }
+    </script>
+
+
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?28428a78c9ad21d09428f89378d9c50b";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">木陽</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <h1 class="site-subtitle" itemprop="description">木之陽兮  卿云烂兮</h1>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>Categories</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>Search
+        </a>
+      </li>
+  </ul>
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="none"
+           placeholder="Searching..." spellcheck="false"
+           type="text" id="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="http://atomicer.cn/2018/09/09/%E5%9F%BA%E4%BA%8Eetcd%E3%80%81zookeeper%E7%AD%89kv%E5%AD%98%E5%82%A8%E5%AE%9E%E7%8E%B0%E6%9C%8D%E5%8A%A1%E5%8F%91%E7%8E%B0/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/mine.jpg">
+      <meta itemprop="name" content="木陽">
+      <meta itemprop="description" content="木之陽兮  卿云烂兮">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="木陽">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          基于Etcd/zookeeper等kv存储实现服务发现
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-09-09 22:42:08" itemprop="dateCreated datePublished" datetime="2018-09-09T22:42:08+00:00">2018-09-09</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Java/" itemprop="url" rel="index">
+                    <span itemprop="name">Java</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <blockquote>
+<p>github 源码地址：  <a href="https://github.com/suniper/plum-mesh-agent" target="_blank" rel="noopener">suniper/plum-mesh-agent</a></p>
+</blockquote>
+<p>以之前完成的开源项目<a href="https://github.com/suniper/plum-mesh-agent" target="_blank" rel="noopener">suniper-pma</a>的代码实例为例，阐述一下我的服务发现和负载均衡框架是如何实现的 (注：下文中为了更好理解，所贴的代码在源代码的基础上做了一些修改)</p>
+<a id="more"></a>
+
+<p>理论上所有的KV存储都可以作为注册中心，这里以etcd和zk两种介质为例，阐述service discovery的实现过程。</p>
+<h3 id="实现原理"><a href="#实现原理" class="headerlink" title="实现原理"></a>实现原理</h3><ol>
+<li>将服务信息注册到KV Store指定节点的子节点中</li>
+<li>通过KV Store中指定的节点获取可用的服务信息初始化可用的服务列表；</li>
+<li>监听KV Store中节点的变化，从而实现可用服务列表的动态更新</li>
+</ol>
+<p>实现以上场景显然需要我们有一个KV Store的驱动（Generic Driver）从而完成一些必要的操作。在第三点中，我将 <code>监听KV Store中节点的变化</code>的功能也划分到这个驱动中，推测可能用到的操作，定义接口如下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">KVStore</span> <span class="keyword">extends</span> <span class="title">AutoCloseable</span> </span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Get node and its data, return null when it does not exist</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> key node name</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> Node info</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> Exception exception during operation</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function">Node <span class="title">get</span><span class="params">(String key)</span> <span class="keyword">throws</span> Exception</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * List all child nodes and their data, return an empty list when</span></span><br><span class="line"><span class="comment">     * the parent node does not exist or has no children</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> prefix 父节点</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> List of Node</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> Exception exception during operation</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function">List&lt;Node&gt; <span class="title">list</span><span class="params">(String prefix)</span> <span class="keyword">throws</span> Exception</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * List the names of all child nodes,</span></span><br><span class="line"><span class="comment">     * return an empty list when the parent node does not exist or has no children</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> prefix 父节点</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> List of node name</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> Exception exception during operation</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function">List&lt;String&gt; <span class="title">listKeys</span><span class="params">(String prefix)</span> <span class="keyword">throws</span> Exception</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Update the data to the node and persist the storage.</span></span><br><span class="line"><span class="comment">     * &lt;p&gt;</span></span><br><span class="line"><span class="comment">     * Update if the node already exists,</span></span><br><span class="line"><span class="comment">     * but does not modify the type of the node (temporary/persistent)</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> key   Node name (configuration directory)</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> value Node data (registered service information)</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> reversion</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> Exception exception during operation</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">long</span> <span class="title">put</span><span class="params">(String key, String value)</span> <span class="keyword">throws</span> Exception</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Update data to nodes and persist storage.</span></span><br><span class="line"><span class="comment">     * &lt;p&gt;</span></span><br><span class="line"><span class="comment">     * Update if the node already exists,</span></span><br><span class="line"><span class="comment">     * but does not modify the type of the node (temporary/persistent)</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> key       node name (configuration directory)</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> value     node data (registered service information)</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> ephemeral is a temporary node</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> reversion</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> Exception exception during operation</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">long</span> <span class="title">put</span><span class="params">(String key, String value, <span class="keyword">boolean</span> ephemeral)</span> <span class="keyword">throws</span> Exception</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Delete the node</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> key node name</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> Number of nodes successfully deleted</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> Exception IllegalArgumentException: Node is not empty</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> Exception exception during operation</span></span><br><span class="line"><span class="comment">     *                        </span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">long</span> <span class="title">delete</span><span class="params">(String key)</span> <span class="keyword">throws</span> Exception</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Whether the node exists</span></span><br><span class="line"><span class="comment">     * &lt;p&gt;</span></span><br><span class="line"><span class="comment">     * 节点是否存在</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> key node name 节点名称</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> true: exists 存在</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> Exception exception during operation</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">boolean</span> <span class="title">exists</span><span class="params">(String key)</span> <span class="keyword">throws</span> Exception</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Monitor changes to all child nodes (without parent nodes), continuous monitoring</span></span><br><span class="line"><span class="comment">     * &lt;p&gt;</span></span><br><span class="line"><span class="comment">     * 监视所有子节点的变化（不包含父节点），持续监听</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> key      Name of parent node 父节点名称</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> consumer Callback when child nodes change 子节点变化时的回调</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> Exception exception during operation</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">watchChildren</span><span class="params">(String key, BiConsumer&lt;Event, Node&gt; consumer)</span> <span class="keyword">throws</span> Exception</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Monitor the changes of all child nodes (excluding the parent node),</span></span><br><span class="line"><span class="comment">     * and judge whether it needs to exit the monitoring according to the exit signal.</span></span><br><span class="line"><span class="comment">     * &lt;p&gt;</span></span><br><span class="line"><span class="comment">     * 监视所有子节点的变化（不包含父节点），根据退出信号判断是否需要退出监听</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> key              Name of parent node 父节点名称</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> exitSignSupplier Provide an exit signal, otherwise it will always listen 提供退出信号，否则一直监听</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> consumer         子节点变化时的回调</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> Exception exception during operation</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">watchChildren</span><span class="params">(String key, Supplier&lt;Boolean&gt; exitSignSupplier, BiConsumer&lt;Event, Node&gt; consumer)</span> <span class="keyword">throws</span> Exception</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Used to create a parent (prefix) and a persistent node</span></span><br><span class="line"><span class="comment">     * &lt;p&gt;</span></span><br><span class="line"><span class="comment">     * 用于创建父节点（prefix）, 且为持久节点</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> parentNode Name of parent node 父节点名称</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> Exception exception during operation</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">createParentNode</span><span class="params">(String parentNode)</span> <span class="keyword">throws</span> Exception</span>;</span><br></pre></td></tr></table></figure>
+
+<p>  一方面，基于<code>KVStore</code>接口，我们得以在无须关注介质类型（KVStore实现）的情况下，将服务发现的操作单独抽出进行开发；<br>另一方面，在本文的实现方式中，我将 <code>监听KV Store中节点的变化</code>的功能也划分到这个驱动中，所以<code>KVStore</code>对存储介质的子节点的动态监听的实现，即<code>witchChildren</code>接口构成了服务发现的重要闭环。</p>
+<p>想必也注意到了 <code>put(String key, String value, boolean ephemeral)</code> 接口，是的，<code>KVStore</code>必须满足可以注册临时节点。服务程序启动时将自己的信息注册到KVStore并且维护一个心跳保持节点信息的有效，这样在服务崩溃或停止时KV Store中存储的信息会自动失效，从而保证服务发现逻辑中拿到的都是有效的服务列表。</p>
+<p>另外，在对服务节点监听到的状态变化中，我们将其分为三类：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">enum</span> Event &#123;</span><br><span class="line">    UPDATE,</span><br><span class="line">    DELETE,</span><br><span class="line">    UNRECOGNIZED</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="kv-store的etcd的实现"><a href="#kv-store的etcd的实现" class="headerlink" title="kv store的etcd的实现"></a>kv store的etcd的实现</h3><blockquote>
+<p>源码地址：<a href="https://github.com/suniper/plum-mesh-agent/tree/master/plum-mesh-discovery-etcd" target="_blank" rel="noopener">plum-mesh-discovery-etcd</a></p>
+</blockquote>
+<p>etcd的基本操作可由<code>com.coreos.jetcd 0.0.2</code>实现，我们只需关注<code>如何监听子节点的变化</code>以及<code>如何创建临时节点</code></p>
+<h4 id="子节点监听"><a href="#子节点监听" class="headerlink" title="子节点监听"></a>子节点监听</h4><p>etcd的存储结构类似阿里云的oss，是扁平的kv存储结构，可以直接通过 <code>prefix</code> 检索，举个例子：</p>
+<ul>
+<li>kv: v1<ul>
+<li>zookeeper: v2<ul>
+<li>content: v3</li>
+</ul>
+</li>
+<li>etcd: v4</li>
+<li>mongo: v5</li>
+</ul>
+</li>
+</ul>
+<p>etcd可以通过kv可以表达出以上的层次化结构，但是在存储中实际为平行的一系列的键:</p>
+<ul>
+<li>kv/zookeeper</li>
+<li>kv/zookeeper/content</li>
+<li>kv/etcd</li>
+<li>kv/mongo</li>
+</ul>
+<p>所以在etcd中可以很方便地通过<code>prefix</code>监听所有的“子节点”，根据节点变化的事件回调<code>Consumer</code>：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">watchChildren</span><span class="params">(String key, Supplier&lt;Boolean&gt; exitSignSupplier, BiConsumer&lt;Event, Node&gt; consumer)</span> <span class="keyword">throws</span> InterruptedException </span>&#123;</span><br><span class="line">        ByteSequence storeKey =</span><br><span class="line">                Optional.ofNullable(key)</span><br><span class="line">                        .map(ByteSequence::fromString)</span><br><span class="line">                        .orElse(<span class="keyword">null</span>);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> (Watch watch = client.getWatchClient();</span><br><span class="line">             Watch.Watcher watcher = watch.watch(storeKey,</span><br><span class="line">                     WatchOption.newBuilder().withPrefix(storeKey).build())) &#123;</span><br><span class="line">            <span class="keyword">while</span> (!exitSignSupplier.get()) &#123;</span><br><span class="line">                WatchResponse response = watcher.listen();</span><br><span class="line">                response.getEvents().forEach(watchEvent -&gt; &#123;</span><br><span class="line">                    <span class="comment">// 跳过根节点的变化</span></span><br><span class="line">                    <span class="keyword">if</span> (watchEvent.getKeyValue().getKey().equals(storeKey)) <span class="keyword">return</span>;</span><br><span class="line">                    Event event; <span class="comment">// 此处的Event为上一节中定义的枚举类型</span></span><br><span class="line">                    <span class="keyword">switch</span> (watchEvent.getEventType()) &#123;</span><br><span class="line">                        <span class="keyword">case</span> PUT:</span><br><span class="line">                            event = Event.UPDATE;</span><br><span class="line">                            <span class="keyword">break</span>;</span><br><span class="line">                        <span class="keyword">case</span> DELETE:</span><br><span class="line">                            event = Event.DELETE;</span><br><span class="line">                            <span class="keyword">break</span>;</span><br><span class="line">                        <span class="keyword">default</span>:</span><br><span class="line">                            event = Event.UNRECOGNIZED;</span><br><span class="line">                    &#125;</span><br><span class="line">                    KeyValue keyValue = watchEvent.getKeyValue();</span><br><span class="line">                    Node info = kv2NodeInfo(keyValue);</span><br><span class="line">                    consumer.accept(event, info);</span><br><span class="line">                &#125;);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="创建临时的节点"><a href="#创建临时的节点" class="headerlink" title="创建临时的节点"></a>创建临时的节点</h4><p>很遗憾，etcd没有提供临时id的功能，但是它提供了一个<a href="https://coreos.com/etcd/docs/latest/dev-guide/interacting_v3.html" target="_blank" rel="noopener">租约 Lease</a>的概念,我们可以在初始化客户端时，同时生成一个租约，并且在租约到期时自动续约。当服务崩溃或者停止时，不再有能力自动续约，则节点自动失效。</p>
+<h5 id="生成租约并自动续约："><a href="#生成租约并自动续约：" class="headerlink" title="生成租约并自动续约："></a>生成租约并自动续约：</h5><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> EPHEMERAL_LEASE = <span class="number">60</span>; <span class="comment">// seconds</span></span><br><span class="line"><span class="keyword">private</span> Client client;</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">long</span> leaseId;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">initLease</span><span class="params">()</span> <span class="keyword">throws</span> ExecutionException, InterruptedException </span>&#123;</span><br><span class="line">        Lease lease = client.getLeaseClient();</span><br><span class="line">        LeaseGrantResponse response = lease.grant(EPHEMERAL_LEASE).get();</span><br><span class="line">        leaseId = response.getID();</span><br><span class="line">        lease.keepAlive(leaseId);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h5 id="实现可临时节点的方法"><a href="#实现可临时节点的方法" class="headerlink" title="实现可临时节点的方法"></a>实现可临时节点的方法</h5><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">long</span> <span class="title">put</span><span class="params">(String key, String value, <span class="keyword">boolean</span> ephemeral)</span> <span class="keyword">throws</span> ExecutionException, InterruptedException </span>&#123;</span><br><span class="line">        log.debug(String.format(<span class="string">"put %s to %s"</span>, value, key));</span><br><span class="line">        KV kv = client.getKVClient();</span><br><span class="line">        ByteSequence storeKey =</span><br><span class="line">                Optional.ofNullable(key)</span><br><span class="line">                        .map(ByteSequence::fromString)</span><br><span class="line">                        .orElse(<span class="keyword">null</span>);</span><br><span class="line">        ByteSequence storeValue =</span><br><span class="line">                Optional.ofNullable(value)</span><br><span class="line">                        .map(ByteSequence::fromString)</span><br><span class="line">                        .orElse(<span class="keyword">null</span>);</span><br><span class="line">        PutOption.Builder builder = PutOption.newBuilder();</span><br><span class="line">        <span class="keyword">if</span> (ephemeral) builder.withLeaseId(leaseId);</span><br><span class="line"></span><br><span class="line">        PutResponse response = kv.put(storeKey,</span><br><span class="line">                storeValue, builder.build()).get();</span><br><span class="line">        log.info(String.format(<span class="string">"put key-value: key: %s, reversion: %s, has-prev: %s, ephemeral: %s"</span>,</span><br><span class="line">                key, response.getHeader().getRevision(), response.hasPrevKv(), ephemeral));</span><br><span class="line">        <span class="keyword">return</span> response.getHeader().getRevision();</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>由于租约到期会根据<code>EPHEMERAL_LEASE</code>有一定的延迟，所以服务发现时有一定的几率拿到失活状态的服务</p>
+</blockquote>
+<h3 id="kv-store的zookeeper的实现"><a href="#kv-store的zookeeper的实现" class="headerlink" title="kv store的zookeeper的实现"></a>kv store的zookeeper的实现</h3><blockquote>
+<p>源码地址：<a href="https://github.com/suniper/plum-mesh-agent/tree/master/plum-mesh-discovery-zk" target="_blank" rel="noopener">plum-mesh-discovery-zk</a></p>
+</blockquote>
+<p>zookeeper的基本操作可由<code>org.apache.zookeeper</code>实现, 最新版为<code>3.4.12</code>。和etcd一样，我们只需关注<code>如何监听子节点的变化</code>以及<code>如何创建临时节点</code></p>
+<h4 id="子节点监听-1"><a href="#子节点监听-1" class="headerlink" title="子节点监听"></a>子节点监听</h4><p>zookeeper提供了<code>Watcher</code>，可以对某一节点的变化进行监听，以下面的层次结构为例：</p>
+<ul>
+<li>kv: v1<ul>
+<li>zookeeper: v2<ul>
+<li>content: v3</li>
+</ul>
+</li>
+<li>etcd: v4</li>
+<li>mongo: v5</li>
+</ul>
+</li>
+</ul>
+<p>一、和etcd有所不同，zookeeper的的node与文件系统的层次结构一样，有着严格的parent和children的一对多的关系，无法通过<code>prefix</code>递归列出所有的子节点<br>二、zk的<code>Watcher</code>只能对一个Node进行监听，并且回调了Event事件之后，这个<code>Watcher</code>随即失效<br>三、<code>Watcher</code>可以监听节点本身的事件（<code>Update</code>、<code>Delete</code>等）以及子节点更新的事件（<code>NodeChildrenChanged</code>）</p>
+<p>基于以上三点，已经可以满足我们实现类似etcd的子节点监听的要求：对<code>kv/</code>的子节点进监听，当新增了节点或 <code>kv/zookeeper</code>、 <code>kv/etcd</code>、 <code>kv/mongo</code>发生变化时回调事件（<code>kv/zookeeper/content</code>的变化无需关注）：</p>
+<ul>
+<li>监视节点及子节点的变化：</li>
+<li>当前节点发生改变时，不做任何处理；</li>
+<li>子节点发生变化时，创建相应的sub-node watcher监听子节点的变化，并调用回调通知变化的信息</li>
+</ul>
+<h5 id="继承Watcher-实现常规的监听器（和etcd的实现逻辑类似）"><a href="#继承Watcher-实现常规的监听器（和etcd的实现逻辑类似）" class="headerlink" title="继承Watcher, 实现常规的监听器（和etcd的实现逻辑类似）"></a>继承<code>Watcher</code>, 实现常规的监听器（和etcd的实现逻辑类似）</h5><p>常规操作，根据节点变化的事件回调<code>Consumer</code></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Watch change of node</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="class"><span class="keyword">class</span> <span class="title">SubWatcher</span> <span class="keyword">implements</span> <span class="title">Watcher</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">private</span> BiConsumer&lt;cn.suniper.mesh.discovery.model.Event, Node&gt; consumer;</span><br><span class="line">        <span class="keyword">private</span> Supplier&lt;Boolean&gt; exitSignSupplier;</span><br><span class="line">        <span class="keyword">private</span> <span class="keyword">volatile</span> <span class="keyword">boolean</span> stopWatch;</span><br><span class="line"></span><br><span class="line">        SubWatcher(BiConsumer&lt;cn.suniper.mesh.discovery.model.Event, Node&gt; consumer, Supplier&lt;Boolean&gt; exitSignSupplier) &#123;</span><br><span class="line">            <span class="keyword">this</span>.consumer = consumer;</span><br><span class="line">            <span class="keyword">this</span>.exitSignSupplier = exitSignSupplier;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">process</span><span class="params">(WatchedEvent event)</span> </span>&#123;</span><br><span class="line">            <span class="keyword">if</span> (exitSignSupplier.get()) &#123;</span><br><span class="line">                log.info(<span class="string">"sub-node: stop watch event: "</span> + event);</span><br><span class="line">                <span class="keyword">return</span>;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            log.debug(<span class="string">"sub-node: watch event: "</span> + event);</span><br><span class="line">            cn.suniper.mesh.discovery.model.Event wrapEvent;</span><br><span class="line">            Node node;</span><br><span class="line">            <span class="keyword">switch</span> (event.getType()) &#123;</span><br><span class="line"></span><br><span class="line">                <span class="keyword">case</span> NodeCreated:</span><br><span class="line">                <span class="keyword">case</span> NodeDataChanged:</span><br><span class="line">                    wrapEvent = cn.suniper.mesh.discovery.model.Event.UPDATE;</span><br><span class="line">                    <span class="keyword">try</span> &#123;</span><br><span class="line">                        node = get(event.getPath(), <span class="keyword">this</span>);</span><br><span class="line">                        log.debug(String.format(<span class="string">"get node(%s) data: "</span>, event.getPath()) + node);</span><br><span class="line"></span><br><span class="line">                    &#125; <span class="keyword">catch</span> (Throwable throwable) &#123;</span><br><span class="line">                        log.warn(<span class="string">"error occurred in watcher"</span>, throwable);</span><br><span class="line">                        <span class="keyword">return</span>;</span><br><span class="line">                    &#125;</span><br><span class="line">                    <span class="keyword">break</span>;</span><br><span class="line">                <span class="keyword">case</span> NodeDeleted:</span><br><span class="line">                    wrapEvent = cn.suniper.mesh.discovery.model.Event.DELETE;</span><br><span class="line">                    node = <span class="keyword">new</span> Node();</span><br><span class="line">                    node.setKey(event.getPath());</span><br><span class="line">                    <span class="keyword">break</span>;</span><br><span class="line">                <span class="keyword">default</span>:</span><br><span class="line">                    wrapEvent = cn.suniper.mesh.discovery.model.Event.UNRECOGNIZED;</span><br><span class="line">                    node = <span class="keyword">new</span> Node();</span><br><span class="line">                    node.setKey(event.getPath());</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            stopWatch = <span class="keyword">true</span>;</span><br><span class="line">            consumer.accept(wrapEvent, node);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="function"><span class="keyword">private</span> SubWatcher <span class="title">activate</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            <span class="keyword">this</span>.stopWatch = <span class="keyword">false</span>;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">this</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<h5 id="继承Watcher，实现根节点的监听器"><a href="#继承Watcher，实现根节点的监听器" class="headerlink" title="继承Watcher，实现根节点的监听器"></a>继承<code>Watcher</code>，实现根节点的监听器</h5><p>这个监听器只监听根节点下所有子节点的变化。当根节点发生改变时（新增、删除），list该节点下所有的节点，并检查是否有对应的<code>SubWatcher</code>(子节点事件监听器)，若无则为其新建一个监听器：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ChildrenWatcher</span> <span class="keyword">implements</span> <span class="title">Watcher</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Supplier&lt;Boolean&gt; DEFAULT_SUPPLIER = () -&gt; <span class="keyword">false</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> ConcurrentHashMap&lt;String, SubWatcher&gt; childrenWatcher;</span><br><span class="line">    <span class="keyword">private</span> BiConsumer&lt;cn.suniper.mesh.discovery.model.Event, Node&gt; consumer;</span><br><span class="line">    <span class="keyword">private</span> String path;</span><br><span class="line">    <span class="keyword">private</span> Supplier&lt;Boolean&gt; exitSignSupplier;</span><br><span class="line"></span><br><span class="line">    ChildrenWatcher(String path, BiConsumer&lt;cn.suniper.mesh.discovery.model.Event, Node&gt; consumer,</span><br><span class="line">                    Supplier&lt;Boolean&gt; exitSignSupplier) &#123;</span><br><span class="line">        <span class="keyword">this</span>.consumer = consumer;</span><br><span class="line">        <span class="keyword">this</span>.childrenWatcher = <span class="keyword">new</span> ConcurrentHashMap&lt;&gt;();</span><br><span class="line">        <span class="keyword">this</span>.path = path;</span><br><span class="line">        <span class="keyword">this</span>.exitSignSupplier = exitSignSupplier == <span class="keyword">null</span> ? DEFAULT_SUPPLIER : exitSignSupplier;</span><br><span class="line">        <span class="keyword">this</span>.listAndWatch(<span class="keyword">false</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">process</span><span class="params">(WatchedEvent event)</span> </span>&#123;</span><br><span class="line">        log.debug(<span class="string">"parent-node: watch event: "</span> + event);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (exitSignSupplier.get()) &#123;</span><br><span class="line">            log.info(<span class="string">"parent-node: stop watch event: "</span> + event);</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">switch</span> (event.getType()) &#123;</span><br><span class="line">            <span class="keyword">case</span> NodeChildrenChanged:</span><br><span class="line">                <span class="keyword">this</span>.listAndWatch(<span class="keyword">true</span>);</span><br><span class="line">                <span class="keyword">return</span>;</span><br><span class="line">            <span class="keyword">default</span>:</span><br><span class="line">                log.debug(<span class="string">"ignore event"</span>);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            List&lt;String&gt; res = listKeys(path, <span class="keyword">this</span>);</span><br><span class="line">            log.debug(String.format(<span class="string">"Sub nodes of %s: %s"</span>, path, res));</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">            log.warn(<span class="string">"failed to keep watch node: "</span> + path, e);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">listAndWatch</span><span class="params">(<span class="keyword">boolean</span> accept)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            List&lt;String&gt; subList = listKeys(path, <span class="keyword">this</span>);</span><br><span class="line"></span><br><span class="line">            log.debug(String.format(<span class="string">"size of %s: %s"</span>, path, subList.size()));</span><br><span class="line">            <span class="keyword">for</span> (String sub : subList) &#123;</span><br><span class="line">                SubWatcher watcher = childrenWatcher.computeIfAbsent(sub, k -&gt; &#123;</span><br><span class="line">                    log.debug(<span class="string">"create new watcher for "</span> + sub);</span><br><span class="line">                    SubWatcher newWatcher = <span class="keyword">new</span> SubWatcher(consumer, exitSignSupplier);</span><br><span class="line">                    newWatcher.stopWatch = <span class="keyword">true</span>;</span><br><span class="line">                    <span class="keyword">return</span> newWatcher;</span><br><span class="line">                &#125;);</span><br><span class="line"></span><br><span class="line">                <span class="keyword">if</span> (!watcher.stopWatch) <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">                log.debug(<span class="string">"activate watcher for "</span> + sub);</span><br><span class="line">                watcher.activate();</span><br><span class="line"></span><br><span class="line">                <span class="keyword">if</span> (accept) &#123;</span><br><span class="line">                    Node node = get(sub, watcher);</span><br><span class="line">                    consumer.accept(cn.suniper.mesh.discovery.model.Event.UPDATE, node);</span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                    zooKeeper.exists(sub, watcher, <span class="keyword">null</span>, <span class="keyword">null</span>);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">            log.warn(<span class="string">"failed to list and watch node: "</span> + path, e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="创建临时的节点-1"><a href="#创建临时的节点-1" class="headerlink" title="创建临时的节点"></a>创建临时的节点</h4><p>zookeeper本身支持创建临时的节点，实现的原理是zk客户端会维持与zk服务的心跳，当客户端退出时，服务端检测到心跳超时，就会自动删除该临时节点。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">long</span> <span class="title">put</span><span class="params">(String key, String value, <span class="keyword">boolean</span> ephemeral)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">    Stat stat = zooKeeper.exists(key, <span class="keyword">null</span>);</span><br><span class="line">    <span class="keyword">if</span> (stat != <span class="keyword">null</span>) &#123;</span><br><span class="line">        zooKeeper.setData(key, value.getBytes(), stat.getVersion());</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        CreateMode mode = ephemeral ? CreateMode.EPHEMERAL : CreateMode.PERSISTENT;</span><br><span class="line">        zooKeeper.create(key, value.getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, mode);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    stat = zooKeeper.exists(key, <span class="keyword">null</span>);</span><br><span class="line">    log.info(String.format(<span class="string">"current stat: %s"</span>, stat));</span><br><span class="line">    <span class="keyword">return</span> stat.getMzxid();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="关于多级父目录的创建"><a href="#关于多级父目录的创建" class="headerlink" title="关于多级父目录的创建"></a>关于多级父目录的创建</h4><p>zk节点的每一级父目录必须为真实存在的节点，不像etcd一样可以为虚拟的prefix，所以需要递归创建父目录：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">createParentNode</span><span class="params">(String parentNode)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">        PathUtils.validatePath(parentNode);</span><br><span class="line">        <span class="keyword">if</span> (parentNode.equals(<span class="string">"/"</span>)) <span class="keyword">return</span>;</span><br><span class="line">        File node = <span class="keyword">new</span> File(parentNode);</span><br><span class="line">        String parent = node.getParent();</span><br><span class="line">        <span class="keyword">if</span> (!exists(parent)) &#123;</span><br><span class="line">            createParentNode(parent);</span><br><span class="line">        &#125;</span><br><span class="line">        put(parentNode, DEFAULT_NODE_VALUE);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="在KVStore的基础上完成服务注册与发现"><a href="#在KVStore的基础上完成服务注册与发现" class="headerlink" title="在KVStore的基础上完成服务注册与发现"></a>在<code>KVStore</code>的基础上完成服务注册与发现</h3><blockquote>
+<p>源码地址 &gt; <a href="https://github.com/suniper/plum-mesh-agent/tree/master/plum-mesh-discovery-core" target="_blank" rel="noopener">plum-mesh-discovery-core</a></p>
+</blockquote>
+<h4 id="服务注册"><a href="#服务注册" class="headerlink" title="服务注册"></a>服务注册</h4><ol>
+<li>无论使用何种KV Store，我们将注册服务的信息注册到一个指定的根节点，这里我们设为 <code>/config/suniper</code></li>
+<li>Register注册服务时，在根节点下创建以 <code>{ServerGroup}</code>为名的节点 =&gt; <code>/config/suniper/{ServerGroup}</code></li>
+<li>相关的服务信息会存储在子节点中： key: <code>/config/suniper/{AppName}</code> &lt;=&gt; value: <code>ip/port/weight</code></li>
+<li>服务信息存储的节点会注册为临时节点，Register会以守护线程的方式保持连接，所以所有的KV Store必须满足客户端断开连接一段时间之内会节点会自动失效 (KVStore提供的临时节点注册为我们提供了这个能力)</li>
+</ol>
+<p>将服务提供者(Provider)以及服务注册相关信息作如下封装（部分信息是为了功能的拓展，不在这里介绍）:</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ProviderInfo</span> </span>&#123;</span><br><span class="line">    <span class="comment">// provider</span></span><br><span class="line">    <span class="keyword">private</span> String name;</span><br><span class="line">    <span class="keyword">private</span> String ip;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">int</span> weight;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">int</span> port;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">long</span> version;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Application</span> </span>&#123;</span><br><span class="line">    <span class="keyword">private</span> List&lt;String&gt; registryUrlList; <span class="comment">// 用作注册中心的host:port列表</span></span><br><span class="line">    <span class="keyword">private</span> ProviderInfo providerInfo;</span><br><span class="line">    <span class="keyword">private</span> String serverGroup; <span class="comment">// 所在的服务组</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>创建相应节点<code>/config/suniper/{ServerGroup}</code>并将Provider信息注册到这个节点中.</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">register</span><span class="params">(Application application)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">        String parentNode = String.join(<span class="string">"/"</span>, Constants.STORE_ROOT, application.getServerGroup());</span><br><span class="line">        ProviderInfo providerInfo = Optional.ofNullable(application.getProviderInfo())</span><br><span class="line">                .orElse(<span class="keyword">new</span> ProviderInfo());</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (providerInfo.getIp() == <span class="keyword">null</span>) &#123;</span><br><span class="line">            InetAddress address = HostUtil.getLocalIv4Address();</span><br><span class="line">            <span class="keyword">if</span> (address != <span class="keyword">null</span>) providerInfo.setIp(address.getHostAddress());</span><br><span class="line">            <span class="keyword">else</span> <span class="keyword">throw</span> <span class="keyword">new</span> IllegalStateException(<span class="string">"cannot get local host IP address"</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (providerInfo.getPort() == <span class="number">0</span> || providerInfo.getName() == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> IllegalArgumentException(<span class="string">"please check you provider info"</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        String storeValue = String.format(<span class="string">"%s/%s/%s"</span>,</span><br><span class="line">                providerInfo.getIp(),</span><br><span class="line">                providerInfo.getPort(),</span><br><span class="line">                providerInfo.getWeight());</span><br><span class="line"></span><br><span class="line">        String storeKey = String.join(<span class="string">"/"</span>, parentNode, providerInfo.getName());</span><br><span class="line"></span><br><span class="line">        <span class="comment">// check and create</span></span><br><span class="line">        store.createParentNode(parentNode);</span><br><span class="line">        <span class="keyword">long</span> reversion = store.put(storeKey, storeValue, <span class="keyword">true</span>);</span><br><span class="line">        log.info(String.format(<span class="string">"registered server: `%s` in node: `%s`, reversion: %s"</span>,</span><br><span class="line">                storeKey, storeValue, reversion));</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>通常情况下，我们再服务启动时调用register方法，将服务的信息注册到zk/etcd等注册中心中</p>
+</blockquote>
+<h4 id="服务发现"><a href="#服务发现" class="headerlink" title="服务发现"></a>服务发现</h4><p>在<code>服务注册</code>的操作中，我们已经明确了Node路径的生成规则，所以根据服务组<code>{ServerGroup}</code>我们就可以通过list根节点<code>/config/suniper/{ServerGroup}</code>获取到该服务组中所有的可用的服务列表；通过监听该根节点(<code>KVStore.watchChildren</code>)，我们可以实时获取到节点更新的信息。</p>
+<p>一、我们只需要调用 <code>KVStore.list(&quot;/config/suniper/{ServerGroup}&quot;)</code>即可获取到初始化的服务列表</p>
+<p>二、通过监听根节点的变化，我们可以实时更新服务的列表： <code>watchChildren(String key, Supplier&lt;Boolean&gt; exitSignSupplier, BiConsumer&lt;Event, Node&gt; consumer)</code></p>
+<blockquote>
+<p><code>exitSignSupplier</code>是一个退出信号的生成器，当不再需要监听时，只需令supplier发送一个<code>true</code>的退出信号即可，这个不在这里敷述，可以看源代码了解相关的实现。</p>
+</blockquote>
+<p>我们关注一下<code>BiConsumer&lt;Event, Node&gt; consumer</code>如何实现，直接以代码和注释就行理解:</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="class"><span class="keyword">class</span> <span class="title">Holder</span> <span class="keyword">implements</span> <span class="title">BiConsumer</span>&lt;<span class="title">Event</span>, <span class="title">Node</span>&gt; </span>&#123;</span><br><span class="line">        <span class="keyword">private</span> Map&lt;String, ProviderInfo&gt; providerInfoMap; <span class="comment">// 缓存 node path 和 provider info的对应关系（这个Map必须是线程安全的）</span></span><br><span class="line">        <span class="keyword">private</span> UpdateAction updateAction; <span class="comment">// 执行服务列表更新动作的类，这里知道它的行为即可</span></span><br><span class="line">        <span class="keyword">private</span> <span class="keyword">final</span> AtomicLong lastUpdated = <span class="keyword">new</span> AtomicLong(System.currentTimeMillis()); <span class="comment">// 记录列表的最后更新时间</span></span><br><span class="line"></span><br><span class="line">        Holder(UpdateAction updateAction, Map&lt;String, ProviderInfo&gt; providerInfoMap) &#123;</span><br><span class="line">            <span class="keyword">this</span>.providerInfoMap = providerInfoMap;</span><br><span class="line">            <span class="keyword">this</span>.updateAction = updateAction;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">accept</span><span class="params">(Event event, Node node)</span> </span>&#123;</span><br><span class="line">            <span class="comment">// 将所有的事件分为 delete 和 update 两类</span></span><br><span class="line">            String key = node.getKey();</span><br><span class="line">            <span class="keyword">switch</span> (event) &#123;</span><br><span class="line">                <span class="keyword">case</span> DELETE:</span><br><span class="line">                    <span class="comment">// 子节点失效（被删除）时，移除本地缓存的Provider信息</span></span><br><span class="line">                    ProviderInfo removed = providerInfoMap.remove(key);</span><br><span class="line">                    <span class="keyword">if</span> (removed != <span class="keyword">null</span>)</span><br><span class="line">                        log.info(String.format(<span class="string">"Service offline: %s - %s:%s"</span>, key, removed.getIp(), removed.getPort()));</span><br><span class="line">                    <span class="keyword">else</span></span><br><span class="line">                        log.info(<span class="string">"Service offline: %s - no such provide cache"</span>);</span><br><span class="line">                    update();</span><br><span class="line">                    <span class="keyword">break</span>;</span><br><span class="line">                <span class="keyword">case</span> UPDATE:</span><br><span class="line">                    <span class="comment">// 子节点更新时（新增/更新属性）</span></span><br><span class="line">                    ProviderInfo oldInfo = providerInfoMap.computeIfAbsent(key, k -&gt; <span class="keyword">new</span> ProviderInfo());</span><br><span class="line">                    MapperUtil.node2Provider(node, oldInfo); <span class="comment">// 这个方法将node信息转为provider信息，并更新旧的provider信息（使用缓存，减少对象创建的次数）</span></span><br><span class="line">                    update();</span><br><span class="line">                    <span class="keyword">break</span>;</span><br><span class="line">                <span class="keyword">default</span>:</span><br><span class="line">                    log.info(String.format(<span class="string">"unrecognized event: %s, key: %s"</span>, event, node.getKey()));</span><br><span class="line"></span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">update</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            <span class="comment">// 通知updateAction更新缓存的服务列表</span></span><br><span class="line">            lastUpdated.set(System.currentTimeMillis());</span><br><span class="line">            updateAction.doUpdate();</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p>获取并更新列表，统一在同一个方法中，每次list注册中心中的所有子节点并更新本地的Providers缓存</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="function">List&lt;RegisteredServer&gt; <span class="title">obtainServerListByKvStore</span><span class="params">(Map&lt;String, ProviderInfo&gt; providerInfoMap)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// providerInfoMap: 同上，缓存 node path 和 provider info的对应关系（这个Map必须是线程安全的）</span></span><br><span class="line">        Set&lt;String&gt; newKeys = <span class="keyword">new</span> HashSet&lt;&gt;();</span><br><span class="line">        Consumer&lt;Node&gt; collectNewNodesToSet = node -&gt; newKeys.add(node.getKey());</span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            List&lt;Node&gt; nodeInfoList = store.list(parentNode);</span><br><span class="line">            Stream&lt;ProviderInfo&gt; stream = nodeInfoList</span><br><span class="line">                    .stream()</span><br><span class="line">                    .peek(collectNewNodesToSet) <span class="comment">// 将所有的node path添加到set中</span></span><br><span class="line">                    .map(node -&gt; providerMap.computeIfAbsent(</span><br><span class="line">                            node.getKey(), k -&gt; MapperUtil.node2Provider(node))); <span class="comment">// 将节点转换为ProviderInfo并put到providerMap</span></span><br><span class="line"></span><br><span class="line">            providerMap.keySet()</span><br><span class="line">                    .parallelStream()</span><br><span class="line">                    .filter(k -&gt; !newKeys.contains(k)) <span class="comment">// 过滤出providerMap中已经失效的provider信息（store.list返回的列表中不再存在）</span></span><br><span class="line">                    .forEach(k -&gt; providerMap.remove(k)); <span class="comment">// 移除这些已失效的provider信息</span></span><br><span class="line">            <span class="keyword">return</span> map2ServerList(stream); <span class="comment">// 将剩下的信息转换为Server List</span></span><br><span class="line"></span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">            log.warn(String.format(<span class="string">"failed to obtain list of servers: %s"</span>, parentNode), e);</span><br><span class="line">            <span class="keyword">return</span> Lists.newArrayList();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="负载均衡的实现"><a href="#负载均衡的实现" class="headerlink" title="负载均衡的实现"></a>负载均衡的实现</h3><p>负载均衡算法种类很多，为了满足<code>pma</code>的高可用性，这里我用了<a href="https://github.com/Netflix/ribbon/wiki" target="_blank" rel="noopener">Netflix/ribbon</a>中的负载均衡模块 <code>ribbon-loadbalancer</code>：</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>com.netflix.ribbon<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>ribbon-core<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">version</span>&gt;</span>$&#123;ribbon.version&#125;<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>com.netflix.ribbon<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>ribbon-loadbalancer<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">version</span>&gt;</span>$&#123;ribbon.version&#125;<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>接入<code>ribbon</code>的功能，我们需要分别实现/拓展如下接口/类：</p>
+<ul>
+<li>Server meta: com.netflix.loadbalancer.Server</li>
+<li>服务列表更新器: com.netflix.loadbalancer.ServerListUpdater</li>
+<li>动态服务列表: com.netflix.loadbalancer.ServerList</li>
+</ul>
+<p>实现了以上接口之后，便可按照<a href="https://github.com/Netflix/ribbon/wiki" target="_blank" rel="noopener">Netflix/ribbon</a>提供的方式使用他提供的负载均衡: <a href="https://github.com/suniper/plum-mesh-agent/blob/master/README.md" target="_blank" rel="noopener">doc</a></p>
+<h4 id="动态服务列表"><a href="#动态服务列表" class="headerlink" title="动态服务列表"></a>动态服务列表</h4><p>动态服务列表继承自 <code>com.netflix.loadbalancer.ServerList</code>, 只需实现如下方法：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> List&lt;T&gt; <span class="title">getInitialListOfServers</span><span class="params">()</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">public</span> List&lt;T&gt; <span class="title">getUpdatedListOfServers</span><span class="params">()</span></span>;</span><br></pre></td></tr></table></figure>
+
+<p>在上节的<code>服务发现</code>中提到了，<code>obtainServerListByKvStore</code>可以获取并更新可用的服务列表，所以只需将<code>obtainServerListByKvStore</code>的值返回即可。</p>
+<h4 id="服务列表更新器"><a href="#服务列表更新器" class="headerlink" title="服务列表更新器"></a>服务列表更新器</h4><p>服务列表更新器需要实现以下接口，</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">ServerListUpdater</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * start the serverList updater with the given update action</span></span><br><span class="line"><span class="comment">     * This call should be idempotent.</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> updateAction</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">start</span><span class="params">(UpdateAction updateAction)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * stop the serverList updater. This call should be idempotent</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">stop</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> the last update timestamp as a &#123;<span class="doctag">@link</span> java.util.Date&#125; string</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function">String <span class="title">getLastUpdate</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> the number of ms that has elapsed since last update</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">long</span> <span class="title">getDurationSinceLastUpdateMs</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> the number of update cycles missed, if valid</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">int</span> <span class="title">getNumberMissedCycles</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> the number of threads used, if vaid</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">int</span> <span class="title">getCoreThreads</span><span class="params">()</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>事实上这些接口与上节的服务发现介绍的<code>Consumer</code>的功能高度重合，只需要将上面实现的<code>Holder</code>对接到Updater中即可，具体实现可见源代码 <a href="https://github.com/suniper/plum-mesh-agent/blob/master/plum-mesh-discovery-core/src/main/java/cn/suniper/mesh/discovery/RegistryServerListUpdater.java" target="_blank" rel="noopener">RegistryServerListUpdater.java</a></p>
+<p>以上，<a href="https://github.com/suniper/plum-mesh-agent" target="_blank" rel="noopener">suniper-pma</a>的服务发现和负载均衡组件的实现粗糙的介绍到此结束。</p>
+<h3 id="BTW"><a href="#BTW" class="headerlink" title="BTW"></a>BTW</h3><ul>
+<li><code>ribbon-loadbalancer</code>的文档真非常简短，很多东西都不明就里而且googole不到，只能通过看源代码来了解实现机理以及如何使用</li>
+<li><code>ribbon</code>的官方文档中没有说在pom依赖中应该添加哪些依赖，<code>ribbon-loadbalancer-2.3.0</code>的pom中看到所有的依赖都是使用<code>&lt;scope&gt;runtime&lt;/scope&gt;</code>，在使用的时候屡屡受挫；想了解其他人是如何使用这个模块，但是只能搜到大家都直接用spring-cloud集成的功能</li>
+</ul>
+<h4 id="关于-WeightedResponseTimeRule的负载均衡规则"><a href="#关于-WeightedResponseTimeRule的负载均衡规则" class="headerlink" title="关于 WeightedResponseTimeRule的负载均衡规则"></a>关于 <code>WeightedResponseTimeRule</code>的负载均衡规则</h4><blockquote>
+<p>The rule that use the average/percentile response times to assign dynamic “weights” per Server which is then used in the “Weighted Round Robin” fashion.</p>
+</blockquote>
+<p><code>ribbon</code>的负载均衡中有一个<code>WeightedResponseTimeRule</code>，然而从文档没有详细的介绍，源代码中我都没有找到每一轮更新权重(<code>weights</code>)值的地方，在StackOverflow上提了问题，暂时没有人解答，这里先mark一下。 <a href="https://stackoverflow.com/questions/50964452/weightedresponsetimerule-how-it-work-in-ribbon" target="_blank" rel="noopener">WeightedResponseTimeRule: how it work in ribbon?</a></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"> <span class="function"><span class="keyword">public</span> T <span class="title">executeWithLoadBalancer</span><span class="params">(<span class="keyword">final</span> S request, <span class="keyword">final</span> IClientConfig requestConfig)</span> <span class="keyword">throws</span> ClientException </span>&#123;</span><br><span class="line">    LoadBalancerCommand&lt;T&gt; command = buildLoadBalancerCommand(request, requestConfig);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> command.submit(</span><br><span class="line">            <span class="keyword">new</span> ServerOperation&lt;T&gt;() &#123;</span><br><span class="line">                <span class="meta">@Override</span></span><br><span class="line">                <span class="function"><span class="keyword">public</span> Observable&lt;T&gt; <span class="title">call</span><span class="params">(Server server)</span> </span>&#123;</span><br><span class="line">                    URI finalUri = reconstructURIWithServer(server, request.getUri());</span><br><span class="line">                    S requestForServer = (S) request.replaceUri(finalUri);</span><br><span class="line">                    <span class="keyword">try</span> &#123;</span><br><span class="line">                        <span class="keyword">return</span> Observable.just(AbstractLoadBalancerAwareClient.<span class="keyword">this</span>.execute(requestForServer, requestConfig));</span><br><span class="line">                    &#125; </span><br><span class="line">                    <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">                        <span class="keyword">return</span> Observable.error(e);</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;)</span><br><span class="line">            .toBlocking()</span><br><span class="line">            .single();</span><br><span class="line">    &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">        Throwable t = e.getCause();</span><br><span class="line">        <span class="keyword">if</span> (t <span class="keyword">instanceof</span> ClientException) &#123;</span><br><span class="line">            <span class="keyword">throw</span> (ClientException) t;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> ClientException(e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:  </strong>木陽
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link: </strong>
+    <a href="http://atomicer.cn/2018/09/09/%E5%9F%BA%E4%BA%8Eetcd%E3%80%81zookeeper%E7%AD%89kv%E5%AD%98%E5%82%A8%E5%AE%9E%E7%8E%B0%E6%9C%8D%E5%8A%A1%E5%8F%91%E7%8E%B0/" title="基于Etcd&#x2F;zookeeper等kv存储实现服务发现">http://atomicer.cn/2018/09/09/基于etcd、zookeeper等kv存储实现服务发现/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" rel="noopener" target="_blank"><i class="fa fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/etcd/" rel="tag"><i class="fa fa-tag"></i> etcd</a>
+              <a href="/tags/zookeeper/" rel="tag"><i class="fa fa-tag"></i> zookeeper</a>
+              <a href="/tags/service-discovery/" rel="tag"><i class="fa fa-tag"></i> service-discovery</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018/04/12/kafka%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/" rel="prev" title="Kafka学习笔记 - 生产与消费">
+      <i class="fa fa-chevron-left"></i> Kafka学习笔记 - 生产与消费
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018/11/02/hystrix%E7%9A%84%E4%B8%80%E7%82%B9%E6%80%9D%E8%80%83/" rel="next" title="Hystrix的一点思考">
+      Hystrix的一点思考 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#实现原理"><span class="nav-number">1.</span> <span class="nav-text">实现原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#kv-store的etcd的实现"><span class="nav-number">2.</span> <span class="nav-text">kv store的etcd的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#子节点监听"><span class="nav-number">2.1.</span> <span class="nav-text">子节点监听</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#创建临时的节点"><span class="nav-number">2.2.</span> <span class="nav-text">创建临时的节点</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#生成租约并自动续约："><span class="nav-number">2.2.1.</span> <span class="nav-text">生成租约并自动续约：</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#实现可临时节点的方法"><span class="nav-number">2.2.2.</span> <span class="nav-text">实现可临时节点的方法</span></a></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#kv-store的zookeeper的实现"><span class="nav-number">3.</span> <span class="nav-text">kv store的zookeeper的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#子节点监听-1"><span class="nav-number">3.1.</span> <span class="nav-text">子节点监听</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#继承Watcher-实现常规的监听器（和etcd的实现逻辑类似）"><span class="nav-number">3.1.1.</span> <span class="nav-text">继承Watcher, 实现常规的监听器（和etcd的实现逻辑类似）</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#继承Watcher，实现根节点的监听器"><span class="nav-number">3.1.2.</span> <span class="nav-text">继承Watcher，实现根节点的监听器</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#创建临时的节点-1"><span class="nav-number">3.2.</span> <span class="nav-text">创建临时的节点</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#关于多级父目录的创建"><span class="nav-number">3.3.</span> <span class="nav-text">关于多级父目录的创建</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#在KVStore的基础上完成服务注册与发现"><span class="nav-number">4.</span> <span class="nav-text">在KVStore的基础上完成服务注册与发现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#服务注册"><span class="nav-number">4.1.</span> <span class="nav-text">服务注册</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#服务发现"><span class="nav-number">4.2.</span> <span class="nav-text">服务发现</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#负载均衡的实现"><span class="nav-number">5.</span> <span class="nav-text">负载均衡的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#动态服务列表"><span class="nav-number">5.1.</span> <span class="nav-text">动态服务列表</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#服务列表更新器"><span class="nav-number">5.2.</span> <span class="nav-text">服务列表更新器</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#BTW"><span class="nav-number">6.</span> <span class="nav-text">BTW</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#关于-WeightedResponseTimeRule的负载均衡规则"><span class="nav-number">6.1.</span> <span class="nav-text">关于 WeightedResponseTimeRule的负载均衡规则</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="木陽"
+      src="/mine.jpg">
+  <p class="site-author-name" itemprop="name">木陽</p>
+  <div class="site-description" itemprop="description">木之陽兮  卿云烂兮</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">32</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">16</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">50</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/raomuyang" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;raomuyang" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="http://mail.qq.com/cgi-bin/qm_share?t=qm_mailme&email=RzUmKCoiKSApJikHISg-KiYuK2kkKCo" title="E-Mail → http:&#x2F;&#x2F;mail.qq.com&#x2F;cgi-bin&#x2F;qm_share?t&#x3D;qm_mailme&amp;email&#x3D;RzUmKCoiKSApJikHISg-KiYuK2kkKCo" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="/atom.xml" title="RSS → &#x2F;atom.xml"><i class="fa fa-fw fa-rss"></i>RSS</a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+  <div class="beian"><a href="http://www.beian.miit.gov.cn/" rel="noopener" target="_blank">赣ICP备16004083号 </a>
+  </div>
+
+<div class="copyright">
+  
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">木陽  使用<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">(CC) BY-NC-SA</a> 许可发布</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+  <script>
+    (function(){
+      var bp = document.createElement('script');
+      var curProtocol = window.location.protocol.split(':')[0];
+      bp.src = (curProtocol === 'https') ? 'https://zz.bdstatic.com/linksubmit/push.js' : 'http://push.zhanzhang.baidu.com/push.js';
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(bp, s);
+    })();
+  </script>
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

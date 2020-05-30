@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon.png">
+  <link rel="mask-icon" href="/favicon.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://atomicer.cn').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="1：Aspect切面的配置 （1）通过@Aspect注解定义切面，调用被定义为切点的方法时，会自动加入增强 1234567891011@Aspect&#x2F;&#x2F;注解将PreGreetingAspect定义为一个切面public class PreGreetingAspect&amp;#123;            @Before(&quot;execution(* greetTo(..))&quot;)&#x2F;&#x2F;@Before,@Aft">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Spring学习笔记-AOP,配置切面和声明事务">
+<meta property="og:url" content="http://atomicer.cn/2016/03/30/Spring%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0-AOP/index.html">
+<meta property="og:site_name" content="木陽">
+<meta property="og:description" content="1：Aspect切面的配置 （1）通过@Aspect注解定义切面，调用被定义为切点的方法时，会自动加入增强 1234567891011@Aspect&#x2F;&#x2F;注解将PreGreetingAspect定义为一个切面public class PreGreetingAspect&amp;#123;            @Before(&quot;execution(* greetTo(..))&quot;)&#x2F;&#x2F;@Before,@Aft">
+<meta property="article:published_time" content="2016-03-30T09:46:10.000Z">
+<meta property="article:modified_time" content="2020-05-30T09:25:26.300Z">
+<meta property="article:author" content="木陽">
+<meta property="article:tag" content="Java">
+<meta property="article:tag" content="Spring MVC">
+<meta property="article:tag" content="Spring">
+<meta property="article:tag" content="AOP">
+<meta property="article:tag" content="Aspect">
+<meta property="article:tag" content="Advisor">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://atomicer.cn/2016/03/30/Spring%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0-AOP/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>Spring学习笔记-AOP,配置切面和声明事务 | 木陽</title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-82755477-1"></script>
+    <script>
+      if (CONFIG.hostname === location.hostname) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-82755477-1');
+      }
+    </script>
+
+
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?28428a78c9ad21d09428f89378d9c50b";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">木陽</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <h1 class="site-subtitle" itemprop="description">木之陽兮  卿云烂兮</h1>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>Categories</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>Search
+        </a>
+      </li>
+  </ul>
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="none"
+           placeholder="Searching..." spellcheck="false"
+           type="text" id="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="http://atomicer.cn/2016/03/30/Spring%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0-AOP/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/mine.jpg">
+      <meta itemprop="name" content="木陽">
+      <meta itemprop="description" content="木之陽兮  卿云烂兮">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="木陽">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          Spring学习笔记-AOP,配置切面和声明事务
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2016-03-30 09:46:10" itemprop="dateCreated datePublished" datetime="2016-03-30T09:46:10+00:00">2016-03-30</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Spring/" itemprop="url" rel="index">
+                    <span itemprop="name">Spring</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Spring/Java/" itemprop="url" rel="index">
+                    <span itemprop="name">Java</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="1：Aspect切面的配置"><a href="#1：Aspect切面的配置" class="headerlink" title="1：Aspect切面的配置"></a>1：Aspect切面的配置</h3><blockquote>
+<h4 id="（1）通过-Aspect注解定义切面，调用被定义为切点的方法时，会自动加入增强"><a href="#（1）通过-Aspect注解定义切面，调用被定义为切点的方法时，会自动加入增强" class="headerlink" title="（1）通过@Aspect注解定义切面，调用被定义为切点的方法时，会自动加入增强"></a>（1）通过@Aspect注解定义切面，调用被定义为切点的方法时，会自动加入增强</h4></blockquote>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Aspect</span><span class="comment">//注解将PreGreetingAspect定义为一个切面</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">PreGreetingAspect</span></span>&#123;</span><br><span class="line"></span><br><span class="line">            <span class="meta">@Before</span>(<span class="string">"execution(* greetTo(..))"</span>)<span class="comment">//@Before,@After等注解表示增强类型</span></span><br><span class="line"></span><br><span class="line">            <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">beforeGreeting</span><span class="params">()</span></span>&#123;</span><br><span class="line"></span><br><span class="line">         System.out.println(<span class="string">"-----before advice-----"</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<a id="more"></a>   
+
+<p><em>`@Before中的”execution(</em> greetTo(..))”为切点表达式函数，目的是匹配切入点，* greetTo(..)是通过正则表达式匹配目标类的greetTo()方法`*</p>
+<blockquote>
+</blockquote>
+<h6 id="【1】增强类型有如下几种"><a href="#【1】增强类型有如下几种" class="headerlink" title="【1】增强类型有如下几种"></a>【1】增强类型有如下几种</h6><ul>
+<li>@Before: 前置增强（value , argNames）</li>
+<li>@AfterReturning: 后置增强（value, pointcut,returning, argNames）</li>
+<li>@Around: 环绕增强（value,argNames）</li>
+<li>@AfterThrowing: 抛出增强（value,pointcut,throwing,argNames）</li>
+<li>@After: Final增强(value,argNames)</li>
+<li>@DeclareParents: 引介增强(value,defaultImpl)<blockquote>
+</blockquote>
+<h6 id="【2】切入点函数"><a href="#【2】切入点函数" class="headerlink" title="【2】切入点函数"></a>【2】切入点函数</h6></li>
+<li>execution() 最常用的切点函数<ul>
+<li>通过方法签名定义切点：<ul>
+<li><code>execution(public * *(..))</code>  匹配方法签名为public的切点</li>
+<li><code>execution(* *To(..))</code> 匹配方法名中带To的方法为切点</li>
+</ul>
+</li>
+<li>通过类定义切点<ul>
+<li><code>execution(* com.package.Waiter.*(..))</code>匹配Waiter接口中的所有方法</li>
+</ul>
+</li>
+<li>通过类包定义切点  <ul>
+<li><code>.*</code>：匹配包下所有类</li>
+<li>..*：匹配包、子包下所有类</li>
+<li><code>* com..*.*Dao.find*(..)</code> 匹配所有前缀为com的包和子包下的后缀为Dao的类（接口）的所有前缀为find的方法</li>
+</ul>
+</li>
+<li>通过方法的入参定义切点  <ul>
+<li>execution(<em>joke(int,String,</em>))</li>
+<li>execution(*joke(int,…))</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>args() 在目标类方法的入参是指定的类时（包含子类），匹配切点<ul>
+<li>args(com.test.Waiter)</li>
+</ul>
+</li>
+</ul>
+<p><em>` args和execution(</em> <em>(com.test.Waiter))的区别在于，execution是针对方法签名而言的，只匹配入参为(Waiter waiter)的，args还匹配(NaiveWaiter naiveWaiter)`</em></p>
+<ul>
+<li>target() 按目标类类型匹配<ul>
+<li>target(M)表示若目标类匹配M，则目标类所有方法都匹配切点</li>
+</ul>
+</li>
+<li>within() 通过类匹配模式串声明切点，不能做方法级的匹配<ul>
+<li>within(com.test.*)匹配test包下所有类</li>
+<li>within(com.test..*)匹配test包和子包下所有类</li>
+</ul>
+</li>
+</ul>
+<p><em><code>**@within()**,** @target()**, **@annotation()**,** args()** 都是只接受注解类名作为入参</code></em></p>
+<h6 id="【3】切点复合运算：可以通过运算符，通过多个切点函数匹配切点"><a href="#【3】切点复合运算：可以通过运算符，通过多个切点函数匹配切点" class="headerlink" title="【3】切点复合运算：可以通过运算符，通过多个切点函数匹配切点"></a>【3】切点复合运算：可以通过运算符，通过多个切点函数匹配切点</h6><p> <strong>示例：</strong></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">  <span class="meta">@After</span>(<span class="string">"wintin(com.test.*) &amp;&amp; execution(* greetTo(..))"</span>)</span><br><span class="line"><span class="meta">@Before</span>(<span class="string">"!target(com.test.Waiter) &amp;&amp; execution("</span>* serveTo(..)<span class="string">")"</span>)</span><br><span class="line"><span class="meta">@AfterReturning</span>(<span class="string">"target(com.test1..*) || target(com.test2..*)"</span>)</span><br></pre></td></tr></table></figure>
+
+
+<blockquote>
+<h4 id="（2）基于Schema配置切面"><a href="#（2）基于Schema配置切面" class="headerlink" title="（2）基于Schema配置切面"></a>（2）基于Schema配置切面</h4></blockquote>
+<ul>
+<li>首先定义增强方法的bean</li>
+<li>然后配置<a href="aop:config">aop:config</a>:<ul>
+<li>Config中有<a href="aop:pointcut">aop:pointcut</a>,<a href="aop:aspect">aop:aspect</a>，如果pointcut直接在config中直接定义，则须满足前面的顺序。</li>
+<li>可以定义多个<code>&lt;aop:config&gt;</code>, <code>&lt;aop:config&gt;</code>中还可以直接定义<code>&lt;aop:advisor&gt;</code></li>
+<li><code>&lt;aop:aspect&gt;</code> 须配置的信息有<em>ref=<em>（引用增强方法bean），</em>method=<em>（增强方法）,</em>pointcut/pointcut-ref=</em></li>
+<li>&lt;<code>aop:pointcut&gt;</code>中须配置的有 <em>id=,expression=</em>（定义切点）<blockquote>
+<p>【1】简单的示例</p>
+</blockquote>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">&lt;bean id=<span class="string">"adviceMethods"</span> <span class="class"><span class="keyword">class</span></span>=<span class="string">"com.test.AdviceMethods"</span>/&gt;</span><br><span class="line">     &lt;aop:config proxy-target-<span class="class"><span class="keyword">class</span></span>=<span class="string">"true"</span>&gt;</span><br><span class="line">	     &lt;aop:aspect ref=<span class="string">"adviceMethods"</span>&gt;</span><br><span class="line">		 	&lt;aop:before pointcut=<span class="string">"target(com.test.Waiter) and execution(* greetTo(..))"</span> method=<span class="string">"preGreeting"</span>/&gt;</span><br><span class="line">		 &lt;/aop:aspect&gt;    </span><br><span class="line">     &lt;/aop:config&gt;   </span><br><span class="line">&lt;/bean&gt;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><code>这里的切入点为一个匿名切入点，只能在这个aop:aspect里面使用proxy-target-class=&quot;true&quot;表示使用CGLib动态代理</code>*</li>
+</ul>
+<blockquote>
+<p>【2】配置命名的切入点</p>
+</blockquote>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">aop:config</span> <span class="attr">proxy-target-class</span>=<span class="string">"true"</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">aop:aspect</span> <span class="attr">ref</span>=<span class="string">"adviceMethods"</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">aop:</span> <span class="attr">pointcut</span> <span class="attr">id</span>=<span class="string">"greetToPointcut"</span><span class="attr">expression</span>=<span class="string">"target(com.test.Waiter) and execution(* greetTo(..))"</span> /&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">aop:before</span> <span class="attr">pointcut-ref</span>=<span class="string">"greetToPointcut"</span> <span class="attr">method</span>=<span class="string">"preGreeting"</span>/&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">aop:aspect</span>&gt;</span>    </span><br><span class="line"><span class="tag">&lt;/<span class="name">aop:config</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>aop:config中可以定义多个aop:aspect，所以配置命名pointcut就可以被不同的增强切面所访问（pointcut在aspect外面）</p>
+</blockquote>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">aop:config</span> <span class="attr">proxy-target-class</span>=<span class="string">"true"</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">aop:</span> <span class="attr">pointcut</span> <span class="attr">id</span>=<span class="string">"greetToPointcut"</span> <span class="attr">expression</span>=<span class="string">"target(com.test.Waiter) and execution(* greetTo(..))"</span> /&gt;</span></span><br><span class="line">	<span class="comment">&lt;!--第一个切面--&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">aop:aspect</span> <span class="attr">ref</span>=<span class="string">"adviceMethods"</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">aop:before</span> <span class="attr">pointcut-ref</span>=<span class="string">"greetToPointcut"</span> <span class="attr">method</span>=<span class="string">"preGreeting"</span>/&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">aop:aspect</span>&gt;</span>    </span><br><span class="line">	<span class="comment">&lt;!--第二个切面--&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">aop:aspect</span> <span class="attr">ref</span>=<span class="string">"adviceMethods"</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">aop:before</span> <span class="attr">pointcut-ref</span>=<span class="string">"greetToPointcut"</span> <span class="attr">method</span>=<span class="string">"postGreeting"</span>/&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">aop:aspect</span>&gt;</span>    </span><br><span class="line"><span class="tag">&lt;/<span class="name">aop:config</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>【3】配置Advisor，advisor是切面和增强的复合体</p>
+</blockquote>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">aop:config</span> <span class="attr">proxy-target-class</span>=<span class="string">"true"</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">aop:</span> <span class="attr">pointcut</span> <span class="attr">id</span>=<span class="string">"greetToPointcut"</span> <span class="attr">expression</span>=<span class="string">"target(com.test.Waiter) and execution(* greetTo(..))"</span> /&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">aop:advisor</span> <span class="attr">advice-ref:</span>"<span class="attr">testAdvice</span>" <span class="attr">pointcut-ref</span>=<span class="string">"greetToPointcut"</span>/&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">aop:config</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">bean</span> <span class="attr">id</span>=<span class="string">"testAdvice"</span> <span class="attr">class</span>=<span class="string">"com.test.TestBeforeAdvice"</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p><em>【Advisor中的advice所依赖的类TestBeforeAdvice必须是实现了MethodBeforeAdvice等接口的advisor类】</em></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">TestBeforeAdvice</span> <span class="keyword">implements</span> <span class="title">MethodBeforeAdvice</span></span>&#123;</span><br><span class="line">         <span class="function"><span class="keyword">public</span> class <span class="title">before</span><span class="params">(Method method,Object[] args, Object target)</span><span class="keyword">throws</span> Throwable</span>&#123;</span><br><span class="line">                   System.out.println(<span class="string">"------Test Before Advice"</span>);</span><br><span class="line">         &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-事务通知的声明"><a href="#2-事务通知的声明" class="headerlink" title="2.  事务通知的声明"></a>2.  事务通知的声明</h3><blockquote>
+<h4 id="（1）在xml中配置声明事务"><a href="#（1）在xml中配置声明事务" class="headerlink" title="（1）在xml中配置声明事务"></a>（1）在xml中配置声明事务</h4></blockquote>
+<ul>
+<li>通过tx Schema中定义的<a href="tx:advice">tx:advice</a>声明事务通知。使用前须先将schema定义添加到<beans>根元素中去</li>
+<li>声明事务通知后，通过aop织入，在<a href="aop:config">aop:config</a>元素中声明一个advisor，将事务与切入点关联起来。</li>
+<li>配置dataSource -&gt; 声明事务管理器，包裹数据源 –&gt;</li>
+<li>声明事务通知，transaction-manager参数引用事务管理器 -&gt;</li>
+<li>配置<a href="aop:config">aop:config</a>，定义切入点<a href="aop:pointcut">aop:pointcut</a>在<a href="aop:advisor">aop:advisor</a>设置属性pointcut-ref和advice-ref，advice-ref为刚刚声明的事务通知 -&gt;</li>
+<li>事务的配置完成</li>
+</ul>
+<p><em>a.声明事务管理器，将dataSource包裹</em></p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">bean</span></span></span><br><span class="line"><span class="tag">	<span class="attr">id</span>=<span class="string">"transactionManager"</span><span class="attr">class</span>=<span class="string">"org.springframework.jdbc.datasource.DataSourceTransactionManager"</span></span></span><br><span class="line"><span class="tag">	<span class="attr">p:dataSource-ref</span>=<span class="string">"dataSource"</span>/&gt;</span></span><br></pre></td></tr></table></figure>
+<p><em>b.声明事务通知,引用事务管理器</em></p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">tx:advice</span> <span class="attr">id</span>=<span class="string">"txAdvice"</span> <span class="attr">transaction-manager</span>=<span class="string">"transactionManager"</span>&gt;</span></span><br><span class="line">         <span class="tag">&lt;<span class="name">tx:attributes</span>&gt;</span></span><br><span class="line">                   <span class="tag">&lt;<span class="name">tx:method</span> <span class="attr">name</span>=<span class="string">"*"</span>/&gt;</span></span><br><span class="line">         <span class="tag">&lt;/<span class="name">tx:attributes</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">tx:advice</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p><em>c.声明事务通知需要通知方法（即织入事务管理）</em></p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">aop:config</span> <span class="attr">proxy-traget-class</span>=<span class="string">"true"</span>&gt;</span></span><br><span class="line">         <span class="tag">&lt;<span class="name">!—定义切入点--</span>&gt;</span></span><br><span class="line">         <span class="tag">&lt;<span class="name">aop:pointcut</span> <span class="attr">id</span>=<span class="string">"serviceMethod"</span><span class="attr">expression</span>=<span class="string">"execution(* com.test.service..*(..))"</span>/&gt;</span></span><br><span class="line">         <span class="comment">&lt;!--定义增强类，引用前面声明的事务通知--&gt;</span></span><br><span class="line">         <span class="tag">&lt;<span class="name">aop:advisor</span>  <span class="attr">pointcur-ref</span>=<span class="string">"serviceMethod"</span> <span class="attr">advice-ref</span>=<span class="string">"txAdvice"</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">aop:config</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<h4 id="（2）使用-Transactional，通过annotation声明事务"><a href="#（2）使用-Transactional，通过annotation声明事务" class="headerlink" title="（2）使用@Transactional，通过annotation声明事务"></a>（2）使用@Transactional，通过annotation声明事务</h4><p>简单地使用@Transcational注解来标注方法，将方法定义为支持事务处理的（只能标注共有方法。也能标注类级的，则这个类中所有的共有方法都被定义为支持事务处理的）。</p>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Transactional</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">save</span><span class="params">()</span> </span>&#123;</span><br><span class="line">   <span class="comment">// TODO Auto-generated method stub</span></span><br><span class="line">   userDao.save();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><em>使用这种方法，则在bean配置文件中只需启用<a href="tx:annotation-driven">tx:annotation-driven</a>元素,如下所示：</em></p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">tx:annotation-driven</span></span></span><br><span class="line"><span class="tag">	<span class="attr">proxy-target-class</span>=<span class="string">"false"</span></span></span><br><span class="line"><span class="tag">	<span class="attr">transaction-manager</span>=<span class="string">"transactionManager"</span>/&gt;</span></span><br></pre></td></tr></table></figure>
+<p><em>事务处理器的名称是transactionManager的话，可以省略transaction-manager这个属性</em></p>
+<blockquote>
+<h4 id="（3）配置数据源及hibernate"><a href="#（3）配置数据源及hibernate" class="headerlink" title="（3）配置数据源及hibernate"></a>（3）配置数据源及hibernate</h4></blockquote>
+<ul>
+<li>配置数据源 -&gt;</li>
+<li>配置sessionFactory -&gt;</li>
+<li>配置hibernateTemplate，设置属性sessionFactory为引用刚刚配置的sessionFactory -&gt;</li>
+<li>配置transactionManager，设置属性sessionFactory为引用刚刚配置的sessionFactory</li>
+</ul>
+<p><em>配置数据源示例</em></p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">bean</span> <span class="attr">id</span>=<span class="string">"dataSource"</span> <span class="attr">class</span>=<span class="string">"org.apache.commons.dbcp.BasicDataSource"</span></span></span><br><span class="line"><span class="tag">	<span class="attr">destroy-method</span>=<span class="string">"close"</span></span></span><br><span class="line"><span class="tag">	<span class="attr">p:driverClassName</span>=<span class="string">"com.mysql.jdbc.Driver"</span></span></span><br><span class="line"><span class="tag">	<span class="attr">p:url</span>=<span class="string">"jdbc:mysql://localhost:3306/sampledb"</span></span></span><br><span class="line"><span class="tag">	<span class="attr">p:username</span>=<span class="string">"root"</span></span></span><br><span class="line"><span class="tag">	 <span class="attr">p:password</span>=<span class="string">"123456"</span> /&gt;</span></span><br></pre></td></tr></table></figure>
+
+
+<p><em>配置sessionFactory</em></p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">bean</span> <span class="attr">id</span>=<span class="string">"sessionFactory"</span></span></span><br><span class="line"><span class="tag">	<span class="attr">class</span>=<span class="string">"org.springframework.orm.hibernate3.annotation.AnnotationSessionFactoryBean"</span>&gt;</span></span><br><span class="line">     <span class="tag">&lt;<span class="name">!—引用数据源dataSource--</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span> <span class="attr">name</span>=<span class="string">"dataSource"</span>&gt;</span><span class="tag">&lt;<span class="name">ref</span> <span class="attr">local</span>=<span class="string">"dataSource"</span> /&gt;</span><span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line"></span><br><span class="line">	<span class="tag">&lt;<span class="name">!—hibernate参数--</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span> <span class="attr">name</span>=<span class="string">"hibernateProperties"</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">props</span>&gt;</span></span><br><span class="line">			<span class="comment">&lt;!-- 配置Hibernate的方言--&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">prop</span> <span class="attr">key</span>=<span class="string">"hibernate.dialect"</span>&gt;</span></span><br><span class="line">				org.hibernate.dialect.MySQLDialect</span><br><span class="line">			<span class="tag">&lt;/<span class="name">prop</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">prop</span> <span class="attr">key</span>=<span class="string">"hibernate.hbm2ddl.auto"</span>&gt;</span>update<span class="tag">&lt;/<span class="name">prop</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">prop</span> <span class="attr">key</span>=<span class="string">"hibernate.show_sql"</span>&gt;</span>true<span class="tag">&lt;/<span class="name">prop</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">prop</span> <span class="attr">key</span>=<span class="string">"current_session_context_class"</span>&gt;</span>thread<span class="tag">&lt;/<span class="name">prop</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;/<span class="name">props</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line"></span><br><span class="line">	<span class="tag">&lt;<span class="name">!—设置要扫描的包-</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span> <span class="attr">name</span>=<span class="string">"packagesToScan"</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">list</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">value</span>&gt;</span>cn.jxufe.domain<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;/<span class="name">list</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line"></span><br><span class="line">	<span class="tag">&lt;<span class="name">list</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">value</span>&gt;</span>cn.jxufe.domain.User<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">list</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span> --&gt;</span><br><span class="line"><span class="tag">&lt;/<span class="name">bean</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>使用hibernate的话，无论是template还是transactioManager都要特别地去定义<br>hibernateTemplate引用的包不是在jdbc中，而是hibernate3中，参数sessionFactory引用的是前面包裹了数据源的sessionFactory:</p>
+</blockquote>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">bean</span> <span class="attr">name</span>=<span class="string">"hibernateTemplate"</span></span></span><br><span class="line"><span class="tag"><span class="attr">class</span>=<span class="string">"org.springframework.orm.hibernate3.HibernateTemplate"</span>&gt;</span></span><br><span class="line">       <span class="tag">&lt;<span class="name">property</span> <span class="attr">name</span>=<span class="string">"sessionFactory"</span>&gt;</span></span><br><span class="line">              <span class="tag">&lt;<span class="name">ref</span> <span class="attr">bean</span>=<span class="string">"sessionFactory"</span>/&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">bean</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+
+<blockquote>
+<p>使用hibernate的话，事务管理器也是继承自hibernate3，还有一点和普通的transactionManager不同的是，这里不引用数据源，而是引用sessionFactory</p>
+</blockquote>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">bean</span> <span class="attr">id</span>=<span class="string">"transactionManager"</span></span></span><br><span class="line"><span class="tag"><span class="attr">class</span>=<span class="string">"org.springframework.orm.hibernate3.HibernateTransactionManager"</span>&gt;</span></span><br><span class="line">       <span class="tag">&lt;<span class="name">property</span> <span class="attr">name</span>=<span class="string">"sessionFactory"</span> <span class="attr">ref</span>=<span class="string">"sessionFactory"</span>/&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">bean</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>使用annotation定义事务</p>
+</blockquote>
+<p>false默认用JDK动态代理，true使用cglib动态代理</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">tx:annotation-driven</span> <span class="attr">proxy-target-class</span>=<span class="string">"false"</span> <span class="attr">transaction-manager</span>=<span class="string">"transactionManager"</span>/&gt;</span></span><br></pre></td></tr></table></figure>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:  </strong>木陽
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link: </strong>
+    <a href="http://atomicer.cn/2016/03/30/Spring%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0-AOP/" title="Spring学习笔记-AOP,配置切面和声明事务">http://atomicer.cn/2016/03/30/Spring学习笔记-AOP/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" rel="noopener" target="_blank"><i class="fa fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/Java/" rel="tag"><i class="fa fa-tag"></i> Java</a>
+              <a href="/tags/Spring-MVC/" rel="tag"><i class="fa fa-tag"></i> Spring MVC</a>
+              <a href="/tags/Spring/" rel="tag"><i class="fa fa-tag"></i> Spring</a>
+              <a href="/tags/AOP/" rel="tag"><i class="fa fa-tag"></i> AOP</a>
+              <a href="/tags/Aspect/" rel="tag"><i class="fa fa-tag"></i> Aspect</a>
+              <a href="/tags/Advisor/" rel="tag"><i class="fa fa-tag"></i> Advisor</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2016/03/30/Spring-MVC%E7%9A%84%E4%B8%80%E4%BA%9B%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0-%E5%85%A5%E9%97%A8%E9%85%8D%E7%BD%AE%E5%92%8CHttpMessageConverter/" rel="prev" title="Spring MVC的一些学习笔记-入门配置和HttpMessageConverter">
+      <i class="fa fa-chevron-left"></i> Spring MVC的一些学习笔记-入门配置和HttpMessageConverter
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2016/04/01/JVM%E5%86%85%E5%AD%98%E5%8F%8A%E6%95%B0%E6%8D%AE%E5%9C%A8%E5%86%85%E5%AD%98%E4%B8%AD%E7%9A%84%E5%AD%98%E5%82%A8/" rel="next" title="JVM的内存区及数据在内存中的存储">
+      JVM的内存区及数据在内存中的存储 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#1：Aspect切面的配置"><span class="nav-number">1.</span> <span class="nav-text">1：Aspect切面的配置</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#（1）通过-Aspect注解定义切面，调用被定义为切点的方法时，会自动加入增强"><span class="nav-number">1.1.</span> <span class="nav-text">（1）通过@Aspect注解定义切面，调用被定义为切点的方法时，会自动加入增强</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#【1】增强类型有如下几种"><span class="nav-number">1.1.0.1.</span> <span class="nav-text">【1】增强类型有如下几种</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#【2】切入点函数"><span class="nav-number">1.1.0.2.</span> <span class="nav-text">【2】切入点函数</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#【3】切点复合运算：可以通过运算符，通过多个切点函数匹配切点"><span class="nav-number">1.1.0.3.</span> <span class="nav-text">【3】切点复合运算：可以通过运算符，通过多个切点函数匹配切点</span></a></li></ol></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#（2）基于Schema配置切面"><span class="nav-number">1.2.</span> <span class="nav-text">（2）基于Schema配置切面</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-事务通知的声明"><span class="nav-number">2.</span> <span class="nav-text">2.  事务通知的声明</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#（1）在xml中配置声明事务"><span class="nav-number">2.1.</span> <span class="nav-text">（1）在xml中配置声明事务</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#（2）使用-Transactional，通过annotation声明事务"><span class="nav-number">2.2.</span> <span class="nav-text">（2）使用@Transactional，通过annotation声明事务</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#（3）配置数据源及hibernate"><span class="nav-number">2.3.</span> <span class="nav-text">（3）配置数据源及hibernate</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="木陽"
+      src="/mine.jpg">
+  <p class="site-author-name" itemprop="name">木陽</p>
+  <div class="site-description" itemprop="description">木之陽兮  卿云烂兮</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">32</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">16</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">50</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/raomuyang" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;raomuyang" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="http://mail.qq.com/cgi-bin/qm_share?t=qm_mailme&email=RzUmKCoiKSApJikHISg-KiYuK2kkKCo" title="E-Mail → http:&#x2F;&#x2F;mail.qq.com&#x2F;cgi-bin&#x2F;qm_share?t&#x3D;qm_mailme&amp;email&#x3D;RzUmKCoiKSApJikHISg-KiYuK2kkKCo" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="/atom.xml" title="RSS → &#x2F;atom.xml"><i class="fa fa-fw fa-rss"></i>RSS</a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+  <div class="beian"><a href="http://www.beian.miit.gov.cn/" rel="noopener" target="_blank">赣ICP备16004083号 </a>
+  </div>
+
+<div class="copyright">
+  
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">木陽  使用<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">(CC) BY-NC-SA</a> 许可发布</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+  <script>
+    (function(){
+      var bp = document.createElement('script');
+      var curProtocol = window.location.protocol.split(':')[0];
+      bp.src = (curProtocol === 'https') ? 'https://zz.bdstatic.com/linksubmit/push.js' : 'http://push.zhanzhang.baidu.com/push.js';
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(bp, s);
+    })();
+  </script>
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
